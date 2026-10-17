@@ -253,15 +253,21 @@ async function search(p) {
   });
 
   jobs = dedupe(jobs).sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
-  jobs.forEach((j) => { j.id = Buffer.from(j.url).toString('base64').slice(-24); delete j.snippet; });
+  jobs.forEach((j) => {
+    j.id = Buffer.from(j.url).toString('base64').slice(-24);
+    const blob = `${j.company} ${j.companyIndustry || ''} ${j.snippet || ''}`;
+    j.industries = Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob));
+    delete j.snippet;
+    delete j.companyIndustry;
+  });
 
-  return { total: jobs.length, results: jobs.slice(0, 200), sources: status, tookMs: Date.now() - t0 };
+  return { total: jobs.length, results: jobs.slice(0, p.limit || 200), sources: status, tookMs: Date.now() - t0 };
 }
 
 // ---------- http ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 
-http
+const server = http
   .createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
     if (url.pathname === '/api/search') {
@@ -293,10 +299,17 @@ http
     }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(full)] || 'application/octet-stream' });
     fs.createReadStream(full).pipe(res);
-  })
-  .listen(PORT, () => {
+  });
+
+// Run as a live server (Render, or `node server.js`). When required by
+// scripts/fetch.js the server is not started and only search() is used.
+if (require.main === module) {
+  server.listen(PORT, () => {
     console.log(`Aus Job Radar running on http://localhost:${PORT}`);
     console.log(`Adzuna: ${ADZUNA_APP_ID ? 'on' : 'off (set ADZUNA_APP_ID / ADZUNA_APP_KEY)'}`);
     console.log(`Jooble: ${JOOBLE_KEY ? 'on' : 'off (set JOOBLE_KEY)'}`);
     console.log(`Company boards: ${companies.length} configured`);
   });
+}
+
+module.exports = { search };
