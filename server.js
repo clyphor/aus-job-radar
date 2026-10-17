@@ -7,6 +7,7 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const { ADZUNA_APP_ID, ADZUNA_APP_KEY, JOOBLE_KEY } = process.env;
 const companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'companies.json'), 'utf8'));
+const places = require('./docs/places.js');
 let companyInfo = {};
 try { companyInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'companyInfo.json'), 'utf8')); } catch (e) {}
 
@@ -55,12 +56,13 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // ---------- sources ----------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let titleOnlyRejected = false; // set if Adzuna ever answers 400 to title_only, so we stop asking
 
 async function adzuna(p, q) {
   if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return null;
   const pages = Math.max(1, Math.min(p.adzunaPages || 1, 5));
   const out = [];
-  let titleOnly = !!q; // match the role words in the job title only, so results stay on topic
+  let titleOnly = !!q && !titleOnlyRejected; // match the role words in the job title only, so results stay on topic
   for (let page = 1; page <= pages; page++) {
     const fetchPage = (useTitle) => {
       const u = new URL(`https://api.adzuna.com/v1/api/jobs/au/search/${page}`);
@@ -69,6 +71,7 @@ async function adzuna(p, q) {
       u.searchParams.set('results_per_page', '50');
       u.searchParams.set('sort_by', 'date');
       if (q) u.searchParams.set(useTitle ? 'title_only' : 'what', q);
+      if (p.category) u.searchParams.set('category', p.category);
       if (p.where) u.searchParams.set('where', p.where);
       if (p.days) u.searchParams.set('max_days_old', String(p.days));
       if (p.salaryMin) u.searchParams.set('salary_min', String(p.salaryMin));
@@ -80,7 +83,7 @@ async function adzuna(p, q) {
         data = await fetchPage(titleOnly);
       } catch (e) {
         // if Adzuna rejects title_only, fall back to a normal keyword search
-        if (titleOnly && /HTTP 400/.test(String(e.message))) { titleOnly = false; data = await fetchPage(false); }
+        if (titleOnly && /HTTP 400/.test(String(e.message))) { titleOnly = false; titleOnlyRejected = true; data = await fetchPage(false); }
         else throw e;
       }
     } catch (e) {
@@ -99,6 +102,9 @@ async function adzuna(p, q) {
       posted: j.created || null,
       source: 'Adzuna',
       category: (j.category?.label || '').replace(/ Jobs$/i, ''),
+      lat: typeof j.latitude === 'number' ? Math.round(j.latitude * 100) / 100 : null,
+      lon: typeof j.longitude === 'number' ? Math.round(j.longitude * 100) / 100 : null,
+      area: j.location?.area || [],
       jobTypeRaw: [j.contract_time, j.contract_type].filter(Boolean).join(' ').replace(/_/g, ' '),
       snippet: strip(j.description),
     })));
@@ -106,6 +112,23 @@ async function adzuna(p, q) {
     await sleep(300);
   }
   return out;
+}
+
+async function adzunaCategories() {
+  if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return null;
+  const u = new URL('https://api.adzuna.com/v1/api/jobs/au/categories');
+  u.searchParams.set('app_id', ADZUNA_APP_ID);
+  u.searchParams.set('app_key', ADZUNA_APP_KEY);
+  const d = await getJSON(u);
+  return (d.results || [])
+    .filter((c) => c.tag)
+    .map((c) => ({ tag: c.tag, label: String(c.label || c.tag).replace(/ Jobs$/i, '') }));
+}
+
+async function collectCategory(tag, { pages = 1, days = 30 } = {}) {
+  const rows = await adzuna({ adzunaPages: pages, days, category: tag }, '');
+  if (rows === null) return null;
+  return finalize(dedupe(rows.filter((j) => j.title && j.url)));
 }
 
 async function jooble(p, q) {
@@ -245,6 +268,41 @@ function dedupe(jobs) {
 }
 
 // ---------- derived fields ----------
+// Extra industry guesses. These look at the company name and Adzuna job category only (not the description),
+// so they are cautious. companyInfo.json can add or fix industries per company.
+const INDUSTRY_EXTRA = {
+  accounting: /accounting|accountants?|audit|bookkeep|\bpwc\b|deloitte|\bkpmg\b|ernst|grant thornton|\bbdo\b|\brsm\b/i,
+  legal: /\blaw\b|legal|solicitor|barrister|lawyers|clayton utz|allens|ashurst|herbert smith/i,
+  education: /universit|school|college|\btafe\b|education|academy|learning|childcare|kindergarten|teach/i,
+  government: /government|\bgov\b|council|department of|public service|\bato\b|services australia|defence|police|transport for nsw/i,
+  retail: /retail|woolworths|\bcoles\b|jb hi-?fi|bunnings|kmart|wesfarmers|\bmyer\b|david jones|harvey norman|supermarket|\baldi\b|\bikea\b/i,
+  hospitality: /hospitality|catering|hotel|resort|restaurant|\bcafe\b|accor|hilton|marriott|tourism|travel|airline|qantas|virgin australia|flight centre/i,
+  construction: /construction|builders?|building|civil|\bcpb\b|lendlease|multiplex|property|real estate|realty|\bjll\b|cbre|ray white|trade/i,
+  manufacturing: /manufactur|factory|fabricat|bluescope|packaging|industrial/i,
+  mining: /mining|resources|energy|\boil\b|\bgas\b|rio tinto|\bbhp\b|fortescue|santos|woodside|origin energy|\bagl\b|utilities/i,
+  transport: /transport|logistics|freight|shipping|courier|\bdhl\b|startrack|australia post|\btoll\b|linfox|\bqube\b|aurizon|warehouse/i,
+  telecom: /telecom|telstra|optus|vodafone|\btpg\b|aussie broadband|\bnbn\b/i,
+  media: /\bmedia\b|marketing|advertis|news corp|nine entertainment|foxtel|seven west|publishing|broadcast/i,
+  ngo: /charity|not[- ]for[- ]profit|foundation|red cross|salvation army|community services|volunteer|\bndis\b|disability/i,
+};
+const INDUSTRY_LABELS = {
+  saas: 'Software, SaaS and tech', insurance: 'Insurance', finance: 'Banking and finance', accounting: 'Accounting',
+  health: 'Healthcare', education: 'Education', government: 'Government and public sector', legal: 'Legal',
+  retail: 'Retail', hospitality: 'Hospitality and tourism', construction: 'Construction and property',
+  manufacturing: 'Manufacturing', mining: 'Mining, energy and resources', transport: 'Transport and logistics',
+  telecom: 'Telecommunications', media: 'Media, marketing and advertising', ngo: 'Not-for-profit',
+};
+
+function placeFields(j) {
+  const text = [...(j.area || []), j.location || ''].join(' , ');
+  const pl = places.findPlace(text);
+  j.state = places.stateOf(text) || (pl ? pl.state : '');
+  j.metro = pl ? pl.metro : '';
+  if ((j.lat == null || j.lon == null) && pl) { j.lat = pl.lat; j.lon = pl.lon; }
+  if (j.lat == null) { j.lat = null; j.lon = null; }
+  delete j.area;
+}
+
 const AGENCY_RE = /\b(hays|robert half|michael page|page personnel|randstad|hudson|adecco|manpower|kelly services|programmed|chandler macleod|talent international|peoplebank|davidson|frazer jones|people2people|career moves|six degrees|aston carter|lawson williams|beyond recruitment|recruit(ment|ing|er|ers)?|staffing|executive search|search & selection|labour hire)\b/i;
 const TITLE_REMOTE = /\b(remote|work from home|wfh|work from anywhere)\b/i;
 const TEXT_REMOTE = /\b(fully remote|100% remote|remote[- ]first|remote role|remote position|remote work|work remotely|work from home|wfh)\b/i;
@@ -286,16 +344,36 @@ const normCo = (s) =>
   (s || '').toLowerCase().replace(/\b(pty|ltd|limited|inc|group|holdings|australia|australasia|aus|nz)\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
 const sizeIndex = Object.entries(companyInfo).filter(([k]) => !k.startsWith('_')).map(([k, v]) => [normCo(k), v]).filter(([k]) => k);
 
-function sizeOf(company) {
+function infoOf(company) {
   const c = normCo(company);
-  if (!c) return 'unknown';
+  if (!c) return null;
   const hit = sizeIndex.find(([k]) => c === k || c.startsWith(k + ' '));
-  return hit && hit[1].size ? hit[1].size : 'unknown';
+  return hit ? hit[1] : null;
+}
+
+function sizeOf(company) {
+  const info = infoOf(company);
+  return info && info.size ? info.size : 'unknown';
+}
+
+// give every job an id and its derived fields
+function finalize(jobs) {
+  jobs.forEach((j) => {
+    j.id = Buffer.from(j.url).toString('base64').slice(-24);
+    enrich(j);
+  });
+  return jobs;
 }
 
 function enrich(j) {
   const blob = `${j.company} ${j.companyIndustry || ''} ${j.snippet || ''}`;
-  j.industries = Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob));
+  const nameBlob = `${j.company} ${j.category || ''} ${j.companyIndustry || ''}`;
+  const tags = new Set(Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob)));
+  for (const k of Object.keys(INDUSTRY_EXTRA)) if (INDUSTRY_EXTRA[k].test(nameBlob)) tags.add(k);
+  const info = infoOf(j.company);
+  if (info && info.industry) [].concat(info.industry).forEach((k) => tags.add(k));
+  j.industries = [...tags];
+  placeFields(j);
   j.workplace = workplaceOf(j);
   j.jobType = jobTypeOf(j);
   j.level = levelOf(j.title);
@@ -373,10 +451,7 @@ async function search(p) {
   });
 
   jobs = dedupe(jobs).sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
-  jobs.forEach((j) => {
-    j.id = Buffer.from(j.url).toString('base64').slice(-24);
-    enrich(j);
-  });
+  finalize(jobs);
 
   return { total: jobs.length, results: jobs.slice(0, p.limit || 200), sources: status, tookMs: Date.now() - t0 };
 }
@@ -429,4 +504,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { search, enrich };
+module.exports = { search, enrich, finalize, collectCategory, adzunaCategories, INDUSTRY_LABELS };

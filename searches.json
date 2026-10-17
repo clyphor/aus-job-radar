@@ -1,7 +1,11 @@
 {
   "days": 30,
-  "adzunaPages": 2,
+  "runEveryHours": 4,
+  "adzunaPages": 1,
   "jooblePages": 2,
+  "categoryPages": 2,
+  "categoriesPerRun": 8,
+  "carryDays": 14,
   "roles": [
     "customer experience",
     "customer success",

@@ -6,7 +6,7 @@ There are two ways to run it. Both share the same code.
 
 ## A. GitHub only (default, free)
 
-A GitHub Action runs every 3 hours, collects jobs for the roles in `searches.json`, and saves them to `docs/jobs.json`. A GitHub Pages site (`docs/index.html`) loads that file and filters it instantly in your browser.
+A GitHub Action runs every 4 hours, collects jobs for the roles in `searches.json`, and saves them to `docs/jobs.json`. A GitHub Pages site (`docs/index.html`) loads that file and filters it instantly in your browser.
 
 ### Setup (about 10 minutes)
 
@@ -16,15 +16,28 @@ A GitHub Action runs every 3 hours, collects jobs for the roles in `searches.jso
 4. **Fill the list.** Actions tab -> Refresh jobs -> Run workflow. It takes about a minute.
 5. **Open the site** at `https://<your-username>.github.io/aus-job-radar/`.
 
+### What gets collected
+
+Each run collects two things:
+
+1. **Role keywords** from `searches.json` (customer success, support and so on) from Adzuna, Jooble and your company career pages.
+2. **Adzuna job categories** (Accounting, IT, Sales, Legal, Healthcare and the rest of Adzuna's list). A few categories are refreshed per run on a rotation, newest roles first, so the Adzuna free call limit is not used up. The first time, run **Refresh jobs** from the Actions tab and tick **Fetch every Adzuna category now** to fill the whole list at once.
+
+The page shows what was collected, not every job on every board. Seek, Indeed and LinkedIn cannot be collected at all.
+
 ### Filters on the page
 
-Role, location, industry, work style (remote or hybrid), posted date, job type, level, job category, company size, company name, companies to leave out, titles to leave out, minimum salary, source, only roles with a salary, and hide recruiters. Sorting is by newest, salary or company.
+Dropdowns with checkboxes (tick several, with a search box inside): role titles, location (states and cities), industry, job category, job type, work style, level, company size and source. Also role search words, distance from a city or your current location (5 to 200 km), posted date, company name, companies to leave out, titles to leave out, minimum salary, only roles with a salary, and hide recruiters. Sorting is by newest, salary or company.
 
-Remote, job type and level are worked out from the title, location and description, so treat them as best guesses. Company size comes from `companyInfo.json`, which lists approximate headcount bands for well-known employers. Add your own companies there. Job APIs do not provide company size.
+- **Job category** is Adzuna's list of job functions, similar to Seek's classifications.
+- **Industry** is a best guess from the company name and job category. Fix or add companies in `companyInfo.json`.
+- **Remote, job type and level** are worked out from the title and description, so treat them as best guesses.
+- **Company size** comes from `companyInfo.json` (approximate bands for well-known employers). Job APIs do not provide it.
+- **Distance** uses each job's map coordinates from Adzuna, or the centre of its city. Roles with no location are kept unless you untick "Include roles with no specific location".
 
 ### Change what it collects
 
-- `searches.json` lists the role keywords it collects (for example "customer success") and how many result pages to fetch per keyword. The page can only filter jobs that were collected, so add a keyword here to search for a new kind of role. More keywords and pages mean more jobs but more Adzuna calls.
+- `searches.json` lists the role keywords it collects (for example "customer success"), how many result pages to fetch per keyword, and how many Adzuna categories to refresh per run. The page can only filter jobs that were collected, so add a keyword here to search for a new kind of role. More keywords and pages mean more jobs but more Adzuna calls.
 - `companies.json` lists company career boards. Find the slug in the careers URL:
   - `boards.greenhouse.io/SLUG` -> `"ats": "greenhouse"`
   - `jobs.lever.co/SLUG` -> `"ats": "lever"`
@@ -34,7 +47,7 @@ Saving either file triggers a refresh. The starter slugs are guesses. The status
 
 ### Limits
 
-- The list is up to 3 hours old, not live. It runs every 3 hours to stay within Adzuna's free call limits (about 30 calls per run). Change the `cron` line in `.github/workflows/refresh-jobs.yml` to run more often.
+- The list is up to 3 hours old, not live. It runs every 4 hours to stay within Adzuna's free call limits (about 30 calls per run). Change the `cron` line in `.github/workflows/refresh-jobs.yml` to run more often.
 - A free Pages site from a public repo is public, so anyone with the link can see the job list. Your keys stay hidden.
 - GitHub may pause scheduled runs after about 60 days with no repo activity. Run the workflow by hand to restart it.
 

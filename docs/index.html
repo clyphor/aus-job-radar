@@ -19,17 +19,18 @@
   header .wrap{max-width:1100px;margin:0 auto}
   h1{margin:0;font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.02em}
   header p{margin:6px 0 0;color:#B9D3DF;max-width:56ch}
-  .layout{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:24px;grid-template-columns:320px 1fr}
+  .layout{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:24px;grid-template-columns:330px 1fr}
   @media (max-width:860px){.layout{grid-template-columns:1fr}}
   form{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;align-self:start;display:grid;gap:14px}
-  label{display:grid;gap:5px;font-size:14px;font-weight:700}
-  label small{font-weight:400;color:var(--muted)}
-  input[type=text],input[type=number],select{font:inherit;padding:10px 11px;border:1px solid #B7C6CD;border-radius:6px;background:#fff;color:var(--ink);width:100%}
+  label,.lbl{display:grid;gap:5px;font-size:14px;font-weight:700}
+  label small,.lbl small{font-weight:400;color:var(--muted)}
+  .field{display:grid;gap:5px}
+  input[type=text],input[type=number],input[type=search],select{font:inherit;padding:10px 11px;border:1px solid #B7C6CD;border-radius:6px;background:#fff;color:var(--ink);width:100%}
   input:focus,select:focus,summary:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #7FC1DA;outline-offset:1px}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .check{display:flex;gap:8px;align-items:center;font-weight:500}
   .check input{width:18px;height:18px;flex:none}
-  details{border:1px solid var(--line);border-radius:8px;background:#F8FBFC}
+  details.more{border:1px solid var(--line);border-radius:8px;background:#F8FBFC}
   summary{cursor:pointer;font-weight:700;font-size:14px;padding:11px 12px}
   details .inner{display:grid;gap:14px;padding:4px 12px 14px}
   button.primary{font:inherit;font-weight:700;background:var(--harbour);color:#fff;border:0;border-radius:6px;padding:12px;cursor:pointer}
@@ -38,6 +39,25 @@
   .links{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
   .others{font-size:14px;color:var(--muted)}
   .others a{color:var(--harbour);font-weight:700;margin-right:12px}
+  .hint{font-size:13px;color:var(--muted);margin:0}
+
+  /* multi-select dropdowns */
+  .ms{position:relative}
+  .ms-btn{font:inherit;width:100%;text-align:left;padding:10px 11px;border:1px solid #B7C6CD;border-radius:6px;background:#fff;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+  .ms-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ms-btn.on{border-color:var(--harbour);background:#EAF4F8;font-weight:700}
+  .ms-btn::after{content:"";flex:none;width:7px;height:7px;border:solid var(--muted);border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-3px}
+  .ms-panel{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #B7C6CD;border-radius:8px;box-shadow:0 8px 24px rgba(15,37,48,.18);padding:8px}
+  .ms-panel[hidden]{display:none}
+  .ms-bar{display:flex;justify-content:space-between;align-items:center;margin:6px 2px 0;font-size:13px;color:var(--muted)}
+  .ms-list{max-height:250px;overflow:auto;margin-top:4px}
+  .ms-opt{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;padding:7px 4px;border-radius:4px;cursor:pointer}
+  .ms-opt:hover{background:#F0F6F8}
+  .ms-opt input{width:18px;height:18px;flex:none}
+  .ms-opt small{margin-left:auto;color:var(--muted);font-weight:400}
+  .ms-group{font-size:12px;font-weight:700;color:var(--muted);padding:8px 4px 2px}
+  .ms-empty{padding:10px 4px;color:var(--muted);font-size:14px}
+
   .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
   .chip{font-size:13px;padding:3px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
   .chip.ok{border-color:#9CCDB3;color:var(--ferry)}
@@ -64,7 +84,7 @@
   .saved button{font:inherit;font-size:13px;border:1px solid var(--line);background:#F6F9FA;border-radius:99px;padding:3px 10px;cursor:pointer}
   .topbar{display:none}
   @media (max-width:860px){
-    .topbar{display:flex;position:sticky;top:0;z-index:5;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;font-weight:700}
+    .topbar{display:flex;position:sticky;top:0;z-index:30;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;font-weight:700}
     .topbar button{padding:8px 14px}
   }
   @media (prefers-reduced-motion:no-preference){ul.jobs li{transition:background .15s}ul.jobs li:hover{background:#F7FAFB}}
@@ -82,80 +102,50 @@
 
 <div class="layout">
   <form id="f">
-    <label>Role
-      <input type="text" name="q" id="q" placeholder="e.g. customer success or support" autocomplete="off">
-      <small>Use "or" to search several titles. Leave empty to see everything.</small>
+    <label>Role search
+      <input type="text" id="q" placeholder="e.g. customer success or support" autocomplete="off">
+      <small>Use "or" for several words. Leave empty to see everything.</small>
     </label>
-    <label>Location
-      <input type="text" name="where" id="where" value="Sydney" placeholder="Sydney, Melbourne, or empty for all">
-    </label>
-    <label>Industry
-      <select id="industry">
-        <option value="" selected>Any</option>
-        <option value="saas">SaaS / tech</option>
-        <option value="insurance">Insurance</option>
-        <option value="finance">Banking / finance</option>
-        <option value="health">Health</option>
-      </select>
-    </label>
-    <div class="row">
-      <label>Work style
-        <select id="workplace">
-          <option value="" selected>Any</option>
-          <option value="remote">Remote only</option>
-          <option value="remote-hybrid">Remote or hybrid</option>
+
+    <div class="field"><span class="lbl">Role titles</span><div class="ms" id="ms-titles"></div></div>
+    <div class="field"><span class="lbl">Location</span><div class="ms" id="ms-locations"></div></div>
+
+    <div class="field">
+      <span class="lbl">Distance from</span>
+      <div class="row">
+        <select id="nearFrom" aria-label="Distance from"><option value="">Anywhere</option><option value="me">My location</option></select>
+        <select id="radius" aria-label="Within how many kilometres">
+          <option value="0" selected>Any distance</option>
+          <option value="5">5 km</option><option value="10">10 km</option><option value="25">25 km</option>
+          <option value="50">50 km</option><option value="100">100 km</option><option value="200">200 km</option>
         </select>
-      </label>
-      <label>Posted within
-        <select id="days">
-          <option value="1">24 hours</option>
-          <option value="3">3 days</option>
-          <option value="7">7 days</option>
-          <option value="14">14 days</option>
-          <option value="30" selected>30 days</option>
-          <option value="0">Any time</option>
-        </select>
-      </label>
+      </div>
+      <p class="hint" id="nearNote"></p>
     </div>
 
-    <details id="more">
+    <div class="field"><span class="lbl">Industry</span><div class="ms" id="ms-industries"></div></div>
+    <div class="field"><span class="lbl">Job category</span><div class="ms" id="ms-categories"></div></div>
+    <div class="field"><span class="lbl">Job type</span><div class="ms" id="ms-jobTypes"></div></div>
+
+    <label>Posted within
+      <select id="days">
+        <option value="1">24 hours</option>
+        <option value="3">3 days</option>
+        <option value="7">7 days</option>
+        <option value="14">14 days</option>
+        <option value="30" selected>30 days</option>
+        <option value="0">Any time</option>
+      </select>
+    </label>
+
+    <details class="more" id="more">
       <summary id="moreSummary">More filters</summary>
       <div class="inner">
-        <div class="row">
-          <label>Job type
-            <select id="jobType">
-              <option value="" selected>Any</option>
-              <option value="full-time">Full-time</option>
-              <option value="part-time">Part-time</option>
-              <option value="contract">Contract</option>
-              <option value="casual">Casual</option>
-            </select>
-          </label>
-          <label>Level
-            <select id="level">
-              <option value="" selected>Any</option>
-              <option value="entry">Entry / junior</option>
-              <option value="mid">Mid</option>
-              <option value="senior">Senior</option>
-              <option value="manager">Manager / lead</option>
-              <option value="leadership">Head / director</option>
-            </select>
-          </label>
-        </div>
-        <label>Job category
-          <select id="category"><option value="" selected>Any</option></select>
-        </label>
-        <label>Company size
-          <select id="size">
-            <option value="" selected>Any</option>
-            <option value="1-200">1 to 200</option>
-            <option value="201-1000">201 to 1,000</option>
-            <option value="1001-5000">1,001 to 5,000</option>
-            <option value="5000+">5,000+</option>
-            <option value="unknown">Size not known</option>
-          </select>
-          <small>Only known for companies listed in companyInfo.json</small>
-        </label>
+        <div class="field"><span class="lbl">Work style</span><div class="ms" id="ms-workplaces"></div></div>
+        <div class="field"><span class="lbl">Level</span><div class="ms" id="ms-levels"></div></div>
+        <div class="field"><span class="lbl">Company size</span><div class="ms" id="ms-sizes"></div>
+          <p class="hint">Only known for companies listed in companyInfo.json</p></div>
+        <div class="field"><span class="lbl">Source</span><div class="ms" id="ms-sources"></div></div>
         <label>Company name contains
           <input type="text" id="company" list="companies" autocomplete="off" placeholder="e.g. Atlassian">
           <datalist id="companies"></datalist>
@@ -166,21 +156,12 @@
         <label>Leave out titles containing
           <input type="text" id="exclude" placeholder="e.g. senior, manager, lead" autocomplete="off">
         </label>
-        <div class="row">
-          <label>Min salary
-            <input type="number" id="salaryMin" placeholder="70000" step="5000" min="0">
-          </label>
-          <label>Source
-            <select id="source">
-              <option value="" selected>All</option>
-              <option>Adzuna</option>
-              <option>Jooble</option>
-              <option>Company site</option>
-            </select>
-          </label>
-        </div>
+        <label>Min salary
+          <input type="number" id="salaryMin" placeholder="70000" step="5000" min="0">
+        </label>
         <label class="check"><input type="checkbox" id="salaryOnly"> Only roles that list a salary</label>
         <label class="check"><input type="checkbox" id="hideAgencies"> Hide recruiters and agencies</label>
+        <label class="check"><input type="checkbox" id="includeNoLocation" checked> Include roles with no specific location</label>
       </div>
     </details>
 
@@ -209,21 +190,33 @@
   </main>
 </div>
 
+<script src="places.js"></script>
 <script src="filter.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const TEXT_IDS = ['q','where','industry','workplace','days','jobType','level','category','size','company','excludeCompany','exclude','salaryMin','source','sort'];
-const CHECK_IDS = ['salaryOnly','hideAgencies'];
-const ALL_IDS = [...TEXT_IDS, ...CHECK_IDS];
-const DEFAULTS = { where: 'Sydney', days: '30', sort: 'new' };
-const MORE_KEYS = ['jobType','level','category','size','company','excludeCompany','exclude','salaryMin','source','salaryOnly','hideAgencies'];
-const LABELS = {
-  q:'Role', where:'Location', industry:'Industry', workplace:'Work style', days:'Posted within', jobType:'Job type', level:'Level',
-  category:'Job category', size:'Company size', company:'Company name', excludeCompany:'Leave out companies', exclude:'Leave out titles',
-  salaryMin:'Min salary', source:'Source', salaryOnly:'Only roles that list a salary', hideAgencies:'Hide recruiters'
+
+// ---------- state ----------
+const TEXT_IDS = ['q','days','company','excludeCompany','exclude','salaryMin','nearFrom','radius','sort'];
+const CHECK_IDS = ['salaryOnly','hideAgencies','includeNoLocation'];
+const DEFAULTS = { days: '30', radius: '0', sort: 'new', includeNoLocation: true };
+const MS_LABELS = { titles:'Role titles', locations:'Location', industries:'Industry', categories:'Job category', jobTypes:'Job type', workplaces:'Work style', levels:'Level', sizes:'Company size', sources:'Source' };
+const FIXED = {
+  industries: [
+    ['saas','Software, SaaS and tech'],['insurance','Insurance'],['finance','Banking and finance'],['accounting','Accounting'],
+    ['health','Healthcare'],['education','Education'],['government','Government and public sector'],['legal','Legal'],
+    ['retail','Retail'],['hospitality','Hospitality and tourism'],['construction','Construction and property'],
+    ['manufacturing','Manufacturing'],['mining','Mining, energy and resources'],['transport','Transport and logistics'],
+    ['telecom','Telecommunications'],['media','Media, marketing and advertising'],['ngo','Not-for-profit'],['none','Not identified'],
+  ],
+  jobTypes: [['full-time','Full-time'],['part-time','Part-time'],['contract','Contract'],['casual','Casual'],['unknown','Not stated']],
+  workplaces: [['remote','Remote'],['hybrid','Hybrid'],['unknown','Not stated']],
+  levels: [['entry','Entry / junior'],['mid','Mid'],['senior','Senior'],['manager','Manager / lead'],['leadership','Head / director']],
+  sizes: [['1-200','1 to 200'],['201-1000','201 to 1,000'],['1001-5000','1,001 to 5,000'],['5000+','5,000+'],['unknown','Size not known']],
+  sources: [['Adzuna','Adzuna'],['Jooble','Jooble'],['Company site','Company career pages']],
 };
 let POOL = [];
+let MYLOC = null;
 const seenBefore = new Set(store('seen') || []);
 
 function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)||'null'); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
@@ -238,31 +231,108 @@ function ago(d){
   return Math.floor(h/24) + 'd ago';
 }
 
-function snapshot(){ const o = {}; ALL_IDS.forEach((k) => o[k] = get(k)); return o; }
-function restore(o){ ALL_IDS.forEach((k) => set(k, o[k] !== undefined ? o[k] : (DEFAULTS[k] ?? (CHECK_IDS.includes(k) ? false : '')))); }
+// ---------- multi-select dropdowns ----------
+const MS = {};
+function msInit(key){
+  const root = $('#ms-' + key);
+  const label = MS_LABELS[key];
+  MS[key] = { key, label, options: [], sel: new Set(), root };
+  root.innerHTML =
+    `<button type="button" class="ms-btn" aria-expanded="false" aria-label="${esc(label)}"><span></span></button>` +
+    `<div class="ms-panel" hidden>` +
+      `<input type="search" class="ms-search" placeholder="Search ${esc(label.toLowerCase())}" aria-label="Search ${esc(label)}" autocomplete="off">` +
+      `<div class="ms-bar"><span class="ms-count"></span><button type="button" class="link" data-a="clear">Clear</button></div>` +
+      `<div class="ms-list"></div>` +
+    `</div>`;
+  const btn = root.querySelector('.ms-btn'), panel = root.querySelector('.ms-panel'), search = root.querySelector('.ms-search');
+  btn.addEventListener('click', () => {
+    const open = panel.hidden;
+    msCloseAll();
+    if(open){ panel.hidden = false; btn.setAttribute('aria-expanded', 'true'); search.value = ''; msList(key); if(!matchMedia('(pointer: coarse)').matches) search.focus(); }
+  });
+  search.addEventListener('input', () => msList(key));
+  root.addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type=checkbox]'); if(!cb) return;
+    if(cb.checked) MS[key].sel.add(cb.value); else MS[key].sel.delete(cb.value);
+    msLabel(key); render();
+  });
+  root.addEventListener('click', (e) => {
+    if(e.target.dataset.a === 'clear'){ MS[key].sel.clear(); msList(key); msLabel(key); render(); }
+  });
+  msLabel(key);
+}
+function msCloseAll(){
+  document.querySelectorAll('.ms-panel').forEach((p) => { p.hidden = true; });
+  document.querySelectorAll('.ms-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+}
+function msSet(key, options){ MS[key].options = options; msLabel(key); if(!MS[key].root.querySelector('.ms-panel').hidden) msList(key); }
+function msOptionLabel(key, v){ const o = MS[key].options.find((x) => x.v === v); return o ? o.label : v; }
+function msLabel(key){
+  const m = MS[key], n = m.sel.size;
+  const btn = m.root.querySelector('.ms-btn');
+  btn.querySelector('span').textContent = n === 0 ? `${m.label}: Any` : n === 1 ? `${m.label}: ${msOptionLabel(key, [...m.sel][0])}` : `${m.label}: ${n} selected`;
+  btn.classList.toggle('on', n > 0);
+}
+function msList(key){
+  const m = MS[key];
+  const term = m.root.querySelector('.ms-search').value.toLowerCase().trim();
+  const opts = m.options.filter((o) => !term || o.label.toLowerCase().includes(term));
+  const shown = opts.slice(0, 250);
+  let html = '', group = null;
+  // selected options float to the top when the list is long
+  const ordered = m.options.length > 40 && !term ? [...shown.filter((o) => m.sel.has(o.v)), ...shown.filter((o) => !m.sel.has(o.v))] : shown;
+  for(const o of ordered){
+    if(o.group && o.group !== group){ group = o.group; html += `<div class="ms-group">${esc(group)}</div>`; }
+    html += `<label class="ms-opt"><input type="checkbox" value="${esc(o.v)}"${m.sel.has(o.v) ? ' checked' : ''}><span>${esc(o.label)}</span>${o.count != null ? `<small>${o.count}</small>` : ''}</label>`;
+  }
+  if(!html) html = '<div class="ms-empty">Nothing matches that search.</div>';
+  m.root.querySelector('.ms-list').innerHTML = html;
+  m.root.querySelector('.ms-count').textContent = opts.length > shown.length ? `Showing ${shown.length} of ${opts.length}. Type to narrow.` : `${opts.length} options`;
+}
+document.addEventListener('click', (e) => { if(!e.target.closest('.ms')) msCloseAll(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape') msCloseAll(); });
 
+// ---------- filter state ----------
+function origin(){
+  const v = get('nearFrom');
+  if(!v) return null;
+  if(v === 'me') return MYLOC;
+  const p = Places.PLACES.find((x) => x.name === v);
+  return p ? { lat: p.lat, lon: p.lon } : null;
+}
 function current(){
-  return {
-    q: get('q'), where: get('where'), industry: get('industry'), workplace: get('workplace'),
-    days: parseInt(get('days')) || 0, jobType: get('jobType'), level: get('level'), category: get('category'),
-    size: get('size'), company: get('company'), excludeCompany: get('excludeCompany'), exclude: get('exclude'),
-    salaryMin: parseInt(get('salaryMin')) || 0, source: get('source'),
-    salaryOnly: get('salaryOnly'), hideAgencies: get('hideAgencies'),
+  const f = {
+    q: get('q'), days: parseInt(get('days')) || 0, company: get('company'), excludeCompany: get('excludeCompany'),
+    exclude: get('exclude'), salaryMin: parseInt(get('salaryMin')) || 0, salaryOnly: get('salaryOnly'),
+    hideAgencies: get('hideAgencies'), includeNoLocation: get('includeNoLocation'),
+    radius: parseInt(get('radius')) || 0, origin: origin(),
   };
+  Object.keys(MS).forEach((k) => { f[k] = [...MS[k].sel]; });
+  return f;
+}
+function snapshot(){
+  const o = {};
+  TEXT_IDS.concat(CHECK_IDS).forEach((k) => { o[k] = get(k); });
+  Object.keys(MS).forEach((k) => { o['ms_' + k] = [...MS[k].sel]; });
+  return o;
+}
+function restore(o){
+  TEXT_IDS.concat(CHECK_IDS).forEach((k) => set(k, o[k] !== undefined ? o[k] : (DEFAULTS[k] ?? (CHECK_IDS.includes(k) ? false : ''))));
+  Object.keys(MS).forEach((k) => { MS[k].sel = new Set(o['ms_' + k] || []); msLabel(k); });
 }
 
-function isActive(f, k){ return !!f[k]; }
-
+// ---------- results ----------
 function otherBoards(){
   const q = encodeURIComponent(($('#q').value || 'customer').split(/\s+or\s+|,|\|/i)[0].trim());
-  const w = encodeURIComponent($('#where').value || 'Australia');
+  const loc = [...MS.locations.sel][0] || 'Australia';
+  const w = encodeURIComponent(loc);
   $('#others').innerHTML = 'Also search on: ' +
     `<a href="https://www.seek.com.au/jobs?keywords=${q}&where=${w}" target="_blank" rel="noopener">Seek</a>` +
     `<a href="https://au.indeed.com/jobs?q=${q}&l=${w}" target="_blank" rel="noopener">Indeed</a>` +
     `<a href="https://www.linkedin.com/jobs/search/?keywords=${q}&location=${w}" target="_blank" rel="noopener">LinkedIn</a>`;
 }
 
-function tagsFor(j){
+function tagsFor(j, org){
   const t = [];
   if(seenBefore.size && !seenBefore.has(j.id)) t.push('<span class="tag new">New</span>');
   if(j.salary) t.push(`<span class="tag salary">${esc(j.salary)}</span>`);
@@ -273,10 +343,23 @@ function tagsFor(j){
   if(j.size && j.size !== 'unknown') t.push(`<span class="tag">${esc(j.size)} staff</span>`);
   if(j.category) t.push(`<span class="tag">${esc(j.category)}</span>`);
   if(j.agency) t.push('<span class="tag agency">Recruiter</span>');
+  if(org && j.lat != null) t.push(`<span class="tag">${Math.round(Places.distanceKm(org, { lat: j.lat, lon: j.lon }))} km away</span>`);
   t.push(`<span class="tag">${esc(j.source)}</span>`);
   t.push(`<span class="meta">${ago(j.posted)}</span>`);
   return t.join('');
 }
+
+const CLEARERS = [
+  ['Role search', (f) => ({ ...f, q: '' })], ['Role titles', (f) => ({ ...f, titles: [] })],
+  ['Location', (f) => ({ ...f, locations: [] })], ['Distance', (f) => ({ ...f, radius: 0 })],
+  ['Industry', (f) => ({ ...f, industries: [] })], ['Job category', (f) => ({ ...f, categories: [] })],
+  ['Job type', (f) => ({ ...f, jobTypes: [] })], ['Posted within', (f) => ({ ...f, days: 0 })],
+  ['Work style', (f) => ({ ...f, workplaces: [] })], ['Level', (f) => ({ ...f, levels: [] })],
+  ['Company size', (f) => ({ ...f, sizes: [] })], ['Source', (f) => ({ ...f, sources: [] })],
+  ['Company name', (f) => ({ ...f, company: '' })], ['Leave out companies', (f) => ({ ...f, excludeCompany: '' })],
+  ['Leave out titles', (f) => ({ ...f, exclude: '' })], ['Min salary', (f) => ({ ...f, salaryMin: 0 })],
+  ['Only roles with a salary', (f) => ({ ...f, salaryOnly: false })], ['Hide recruiters', (f) => ({ ...f, hideAgencies: false })],
+];
 
 function render(){
   otherBoards();
@@ -285,7 +368,8 @@ function render(){
   const fresh = results.filter((j) => !seenBefore.has(j.id)).length;
   $('#count').textContent = `${results.length} roles match`;
   $('#summary').textContent = `${results.length} of ${POOL.length} saved roles${fresh && seenBefore.size ? `, ${fresh} new since your last visit` : ''}`;
-  const nMore = MORE_KEYS.filter((k) => isActive(f, k)).length;
+  const nMore = ['workplaces','levels','sizes','sources'].filter((k) => f[k].length).length +
+    [f.company, f.excludeCompany, f.exclude, f.salaryMin, f.salaryOnly, f.hideAgencies, !f.includeNoLocation].filter(Boolean).length;
   $('#moreSummary').textContent = nMore ? `More filters (${nMore} on)` : 'More filters';
   store('last', snapshot());
 
@@ -294,39 +378,67 @@ function render(){
     return;
   }
   if(!results.length){
-    const tries = Object.keys(LABELS).filter((k) => isActive(f, k)).map((k) => {
-      const g = { ...f, [k]: (typeof f[k] === 'boolean' ? false : (typeof f[k] === 'number' ? 0 : '')) };
-      return [LABELS[k], filterJobs(POOL, g).length];
-    }).filter((t) => t[1] > 0).sort((a, b) => b[1] - a[1]);
-    const hint = tries.length
-      ? 'Switching off <b>' + esc(tries[0][0]) + '</b> would show ' + tries[0][1] + ' roles.'
+    const tries = CLEARERS.map(([name, clear]) => [name, filterJobs(POOL, clear(f)).length])
+      .filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    const changed = tries.filter(([name, n]) => n !== 0);
+    const hint = changed.length
+      ? 'Switching off <b>' + esc(changed[0][0]) + '</b> would show ' + changed[0][1] + ' roles.'
       : 'Nothing in the saved list fits. It has ' + POOL.length + ' roles in total.';
     $('#out').innerHTML = '<div class="empty">No roles match these filters. ' + hint + '</div>';
     return;
   }
+  const org = f.radius ? f.origin : null;
   const shown = results.slice(0, 300);
   $('#out').innerHTML = '<ul class="jobs">' + shown.map((j) => `
     <li>
       <a class="title" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
       <div class="meta">${esc(j.company || 'Company not listed')}${j.location ? ' in ' + esc(j.location) : ''}</div>
-      <div class="tags">${tagsFor(j)}</div>
+      <div class="tags">${tagsFor(j, org)}</div>
     </li>`).join('') + '</ul>' +
     (results.length > shown.length ? `<p class="note">Showing the first ${shown.length} of ${results.length}. Narrow the filters to see the rest.</p>` : '');
 }
 
-function fillOptions(){
-  const cats = {}; const cos = new Set();
-  POOL.forEach((j) => { if(j.category) cats[j.category] = (cats[j.category] || 0) + 1; if(j.company) cos.add(j.company); });
-  $('#category').innerHTML = '<option value="">Any</option>' +
-    Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, n]) => `<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
+// ---------- data ----------
+function countBy(fn){ const m = {}; POOL.forEach((j) => { [].concat(fn(j)).forEach((v) => { if(v !== '' && v != null) m[v] = (m[v] || 0) + 1; }); }); return m; }
+
+function fillOptions(data){
+  for(const k of Object.keys(FIXED)){
+    const counts = k === 'industries' ? countBy((j) => (j.industries && j.industries.length ? j.industries : ['none']))
+      : k === 'jobTypes' ? countBy((j) => j.jobType || 'unknown')
+      : k === 'workplaces' ? countBy((j) => j.workplace || 'unknown')
+      : k === 'levels' ? countBy((j) => j.level || 'mid')
+      : k === 'sizes' ? countBy((j) => j.size || 'unknown')
+      : countBy((j) => j.source);
+    msSet(k, FIXED[k].map(([v, label]) => ({ v, label, count: counts[v] || 0 })));
+  }
+  // categories: every Adzuna category, plus any others seen in the data
+  const cc = countBy((j) => j.category);
+  const names = new Set([...(data.categories || []).map((c) => c.label), ...Object.keys(cc)]);
+  msSet('categories', [...names].sort((a, b) => a.localeCompare(b)).map((v) => ({ v, label: v, count: cc[v] || 0 })));
+  // locations: states, then cities, including ones with no jobs yet
+  const sc = countBy((j) => j.state), mc = countBy((j) => j.metro);
+  const metros = [...new Set(Places.PLACES.map((p) => p.metro))];
+  msSet('locations',
+    Places.STATES.map((v) => ({ v, label: v, count: sc[v] || 0, group: 'States and territories' }))
+      .concat(metros.map((v) => ({ v, label: v, count: mc[v] || 0, group: 'Cities and regions' }))));
+  // role titles: every distinct title, most common first
+  const tc = {}, shownAs = {};
+  POOL.forEach((j) => { const k = (j.title || '').trim().toLowerCase(); if(!k) return; tc[k] = (tc[k] || 0) + 1; if(!shownAs[k]) shownAs[k] = j.title.trim(); });
+  msSet('titles', Object.keys(tc).sort((a, b) => tc[b] - tc[a] || a.localeCompare(b)).map((k) => ({ v: k, label: shownAs[k], count: tc[k] })));
+  // company suggestions and distance origins
+  const cos = new Set(POOL.map((j) => j.company).filter(Boolean));
   $('#companies').innerHTML = [...cos].sort().slice(0, 800).map((c) => `<option value="${esc(c)}">`).join('');
+  const seen = new Set();
+  $('#nearFrom').innerHTML = '<option value="">Anywhere</option><option value="me">My location</option>' +
+    Places.PLACES.filter((p) => !seen.has(p.name) && seen.add(p.name)).map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
 }
 
 async function load(){
+  let data = {};
   try{
     const res = await fetch('jobs.json', { cache: 'no-cache' });
     if(!res.ok) throw new Error('jobs.json not found');
-    const data = await res.json();
+    data = await res.json();
     POOL = data.jobs || [];
     $('#status').innerHTML =
       `<span class="chip">Job list last changed ${ago(data.updated)}</span>` +
@@ -337,19 +449,34 @@ async function load(){
     POOL = [];
     $('#status').innerHTML = `<span class="chip bad">${esc(e.message)}</span>`;
   }
-  fillOptions();
+  fillOptions(data);
   const last = store('last'); if(last) restore(last);
   render();
   // remember what was shown so "New" means new since the last visit
   store('seen', [...new Set([...POOL.map((j) => j.id), ...seenBefore])].slice(0, 8000));
 }
 
-// saved searches
+// ---------- distance from my location ----------
+$('#nearFrom').addEventListener('change', () => {
+  const note = $('#nearNote');
+  note.textContent = '';
+  if(get('nearFrom') !== 'me'){ render(); return; }
+  if(!navigator.geolocation){ note.textContent = 'This browser cannot share your location.'; set('nearFrom', ''); render(); return; }
+  note.textContent = 'Finding your location...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { MYLOC = { lat: pos.coords.latitude, lon: pos.coords.longitude }; note.textContent = 'Using your current location. It stays on your device.'; render(); },
+    () => { MYLOC = null; set('nearFrom', ''); note.textContent = 'Location was blocked. Allow it for this site, or pick a city instead.'; render(); },
+    { timeout: 10000 }
+  );
+});
+
+// ---------- saved searches and buttons ----------
 function drawSaved(){
   const list = store('searches') || [];
-  $('#saved').innerHTML = list.map((s, i) =>
-    `<button type="button" data-i="${i}" title="Load this search. Shift-click to delete.">${esc((s.q || 'All roles').slice(0,26))} · ${esc(s.where || 'Australia')}</button>`
-  ).join('');
+  $('#saved').innerHTML = list.map((s, i) => {
+    const locs = s.ms_locations || [];
+    return `<button type="button" data-i="${i}" title="Load this search. Shift-click to delete.">${esc((s.q || 'All roles').slice(0,24))} · ${esc(locs.length ? locs.slice(0, 2).join(', ') : 'Australia')}</button>`;
+  }).join('');
 }
 $('#saved').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if(!b) return;
@@ -362,15 +489,17 @@ $('#save').addEventListener('click', () => {
   const list = store('searches') || [];
   list.unshift(snapshot()); store('searches', list.slice(0, 8)); drawSaved();
 });
-$('#reset').addEventListener('click', () => { restore({}); render(); });
+$('#reset').addEventListener('click', () => { restore({}); $('#nearNote').textContent = ''; render(); });
 
 let t;
-$('#f').addEventListener('input', () => { clearTimeout(t); t = setTimeout(render, 150); });
-$('#f').addEventListener('change', render);
+$('#f').addEventListener('input', (e) => { if(e.target.closest('.ms')) return; clearTimeout(t); t = setTimeout(render, 150); });
+$('#f').addEventListener('change', (e) => { if(e.target.closest('.ms') || e.target.id === 'nearFrom') return; render(); });
 $('#sort').addEventListener('change', render);
 const toResults = () => $('#out').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-$('#f').addEventListener('submit', (e) => { e.preventDefault(); render(); toResults(); });
+$('#f').addEventListener('submit', (e) => { e.preventDefault(); msCloseAll(); render(); toResults(); });
 $('#jump').addEventListener('click', toResults);
+
+Object.keys(MS_LABELS).forEach(msInit);
 drawSaved(); otherBoards(); load();
 </script>
 </body>

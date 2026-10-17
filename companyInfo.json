@@ -1,36 +1,207 @@
 {
-  "_note": "Approximate global headcount bands from general knowledge, not live data. Bands: 1-200, 201-1000, 1001-5000, 5000+. Edit or add companies freely; names match the start of the company name shown on a job.",
-  "Atlassian": { "size": "5000+" },
-  "Canva": { "size": "5000+" },
-  "IAG": { "size": "5000+" },
-  "NRMA Insurance": { "size": "5000+" },
-  "CGU": { "size": "5000+" },
-  "Suncorp": { "size": "5000+" },
-  "AAMI": { "size": "5000+" },
-  "QBE": { "size": "5000+" },
-  "Allianz": { "size": "5000+" },
-  "Zurich": { "size": "5000+" },
-  "Chubb": { "size": "5000+" },
-  "AIG": { "size": "5000+" },
-  "Commonwealth Bank": { "size": "5000+" },
-  "Westpac": { "size": "5000+" },
-  "ANZ": { "size": "5000+" },
-  "NAB": { "size": "5000+" },
-  "Telstra": { "size": "5000+" },
-  "Optus": { "size": "5000+" },
-  "Microsoft": { "size": "5000+" },
-  "Google": { "size": "5000+" },
-  "Amazon": { "size": "5000+" },
-  "Salesforce": { "size": "5000+" },
-  "Oracle": { "size": "5000+" },
-  "SAP": { "size": "5000+" },
-  "Adobe": { "size": "5000+" },
-  "ServiceNow": { "size": "5000+" },
-  "Workday": { "size": "5000+" },
-  "Medibank": { "size": "1001-5000" },
-  "nib": { "size": "1001-5000" },
-  "Xero": { "size": "1001-5000" },
-  "Airwallex": { "size": "1001-5000" },
-  "Culture Amp": { "size": "201-1000" },
-  "Tyro": { "size": "201-1000" }
+  "_note": "Approximate global headcount bands (1-200, 201-1000, 1001-5000, 5000+) and industries from general knowledge, not live data. Edit or add companies freely; names match the start of the company name shown on a job. Industry keys: saas, insurance, finance, accounting, health, education, government, legal, retail, hospitality, construction, manufacturing, mining, transport, telecom, media, ngo.",
+  "Atlassian": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Canva": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "IAG": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "NRMA Insurance": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "CGU": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "Suncorp": {
+    "size": "5000+",
+    "industry": [
+      "insurance",
+      "finance"
+    ]
+  },
+  "AAMI": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "QBE": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "Allianz": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "Zurich": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "Chubb": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "AIG": {
+    "size": "5000+",
+    "industry": [
+      "insurance"
+    ]
+  },
+  "Commonwealth Bank": {
+    "size": "5000+",
+    "industry": [
+      "finance"
+    ]
+  },
+  "Westpac": {
+    "size": "5000+",
+    "industry": [
+      "finance"
+    ]
+  },
+  "ANZ": {
+    "size": "5000+",
+    "industry": [
+      "finance"
+    ]
+  },
+  "NAB": {
+    "size": "5000+",
+    "industry": [
+      "finance"
+    ]
+  },
+  "Telstra": {
+    "size": "5000+",
+    "industry": [
+      "telecom"
+    ]
+  },
+  "Optus": {
+    "size": "5000+",
+    "industry": [
+      "telecom"
+    ]
+  },
+  "Microsoft": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Google": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Amazon": {
+    "size": "5000+",
+    "industry": [
+      "saas",
+      "retail"
+    ]
+  },
+  "Salesforce": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Oracle": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "SAP": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Adobe": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "ServiceNow": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Workday": {
+    "size": "5000+",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Medibank": {
+    "size": "1001-5000",
+    "industry": [
+      "health",
+      "insurance"
+    ]
+  },
+  "nib": {
+    "size": "1001-5000",
+    "industry": [
+      "health",
+      "insurance"
+    ]
+  },
+  "Xero": {
+    "size": "1001-5000",
+    "industry": [
+      "saas",
+      "accounting"
+    ]
+  },
+  "Airwallex": {
+    "size": "1001-5000",
+    "industry": [
+      "finance",
+      "saas"
+    ]
+  },
+  "Culture Amp": {
+    "size": "201-1000",
+    "industry": [
+      "saas"
+    ]
+  },
+  "Tyro": {
+    "size": "201-1000",
+    "industry": [
+      "finance"
+    ]
+  }
 }
