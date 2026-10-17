@@ -5,7 +5,7 @@
 // Run by the GitHub Action on a schedule; can also be run by hand: node scripts/fetch.js
 const fs = require('fs');
 const path = require('path');
-const { search, collectCategory, adzunaCategories } = require('../server.js');
+const { search, collectCategory, adzunaCategories, companyBoards, finalize, dedupe } = require('../server.js');
 
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'searches.json'), 'utf8'));
 const OUT = process.env.JOBS_OUT || path.join(__dirname, '..', 'docs', 'jobs.json');
@@ -44,7 +44,7 @@ const SOURCE_OF = { Adzuna: 'Adzuna', 'Adzuna categories': 'Adzuna', Jooble: 'Jo
       exclude: [],
       days: cfg.days || 30,
       salaryMin: 0,
-      sources: ['adzuna', 'jooble', 'company'],
+      sources: ['adzuna', 'jooble'],
       adzunaPages: cfg.adzunaPages || 1,
       jooblePages: cfg.jooblePages || 1,
       limit: 5000,
@@ -52,6 +52,17 @@ const SOURCE_OF = { Adzuna: 'Adzuna', 'Adzuna categories': 'Adzuna', Jooble: 'Jo
     r.results.forEach(add);
     r.sources.forEach((s) => stat(s.name, s.ok, s.count, s.note));
     console.log(`${q}: ${r.results.length} roles`);
+  }
+
+  // ---- 1b. company career pages: every open role, not only keyword matches ----
+  try {
+    const { jobs: cj, failed } = await companyBoards();
+    const rows = finalize(dedupe(cj.filter((j) => j.title && j.url)));
+    rows.forEach(add);
+    stat('Company sites', true, rows.length, failed.length ? `${failed.length} boards unreachable` : '');
+    console.log(`company sites: ${rows.length} roles (${failed.length} boards unreachable)`);
+  } catch (e) {
+    stat('Company sites', false, 0, String(e.message || e));
   }
 
   // ---- 2. Adzuna categories ----

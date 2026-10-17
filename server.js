@@ -178,12 +178,12 @@ const wp = (v) => {
 
 const atsFetchers = {
   greenhouse: async (s) =>
-    (await getJSON(`https://boards-api.greenhouse.io/v1/boards/${s}/jobs`)).jobs.map((j) => ({
+    (await getJSON(`https://boards-api.greenhouse.io/v1/boards/${s}/jobs?content=true`)).jobs.map((j) => ({
       title: j.title,
       location: j.location?.name || '',
       url: j.absolute_url,
       posted: j.updated_at || null,
-      snippet: '',
+      snippet: strip(j.content),
     })),
   lever: async (s) =>
     (await getJSON(`https://api.lever.co/v0/postings/${s}?mode=json`)).map((j) => ({
@@ -193,7 +193,7 @@ const atsFetchers = {
       posted: j.createdAt ? new Date(j.createdAt).toISOString() : null,
       workplace: wp(j.workplaceType),
       jobTypeRaw: j.categories?.commitment || '',
-      snippet: (j.descriptionPlain || '').slice(0, 400),
+      snippet: j.descriptionPlain || '',
     })),
   ashby: async (s) =>
     (await getJSON(`https://api.ashbyhq.com/posting-api/job-board/${s}`)).jobs.map((j) => ({
@@ -203,7 +203,7 @@ const atsFetchers = {
       posted: j.publishedAt || null,
       workplace: j.isRemote === true ? 'remote' : wp(j.workplaceType),
       jobTypeRaw: String(j.employmentType || '').replace(/([a-z])([A-Z])/g, '$1 $2'),
-      snippet: strip(j.descriptionPlain || j.descriptionHtml).slice(0, 400),
+      snippet: j.descriptionPlain || strip(j.descriptionHtml),
     })),
 };
 
@@ -239,6 +239,15 @@ function locationOk(loc, where) {
   if (!where) return AU_RE.test(l);
   const w = where.toLowerCase();
   return l.includes(w) || /^australia$|remote.*(australia|anz|apac)|(australia|anz|apac).*remote/.test(l);
+}
+
+// Loose check for Jooble: its own search already matched the keyword, so only drop rows where none of the
+// keyword's words appear in the title or preview.
+const STOP = new Set(['and', 'the', 'of', 'for', 'a']);
+function looseMatch(j, alts) {
+  if (!alts.length) return true;
+  const all = `${j.title} ${j.snippet || ''}`.toLowerCase();
+  return alts.some((a) => a.toLowerCase().split(/\s+/).filter((w) => w && !STOP.has(w)).some((w) => all.includes(w)));
 }
 
 function matchesQuery(j, alts) {
@@ -306,14 +315,18 @@ function placeFields(j) {
 
 const AGENCY_RE = /\b(hays|robert half|michael page|page personnel|randstad|hudson|adecco|manpower|kelly services|programmed|chandler macleod|talent international|peoplebank|davidson|frazer jones|people2people|career moves|six degrees|aston carter|lawson williams|beyond recruitment|recruit(ment|ing|er|ers)?|staffing|executive search|search & selection|labour hire)\b/i;
 const TITLE_REMOTE = /\b(remote|work from home|wfh|work from anywhere)\b/i;
-const TEXT_REMOTE = /\b(fully remote|100% remote|remote[- ]first|remote role|remote position|remote work|work remotely|work from home|wfh)\b/i;
+// Phrases that clearly describe a remote role. "remote" on its own is ignored when it describes a place
+// (remote communities, remote areas) or a thing (remote monitoring).
+const STRONG_REMOTE = /\b(fully remote|100% remote|remote[- ]first|remote[- ]only|remote (role|position|job|work|opportunity|based|team|working|within australia|across australia|anywhere)|(this|a|the) role is remote|work(ing)? (fully )?remotely|work(ing)? from home (full[- ]time|permanently|every day)|fully work from home|work from anywhere|location[- ]independent|telecommut|home[- ]based (role|position|work))\b/i;
+const WEAK_REMOTE = /\b(remote(?!\s+(areas?|communit|locations?|sites?|clinics?|towns?|indigenous|monitor|control|access to (the )?(server|system))|ly (located|managed))|work(ing)? from home|wfh|work-from-home|virtual (role|position|team))\b/i;
+const HYBRID = /\b(hybrid|flexible (work|working|location|arrangements?)|flex(ible)? (home|office)|\d\s*days? (in|at|from|per week in) (the )?(office|home)|\d\s*days? (a|per) week (in|at|from) (the )?(office|home)|office[- ]based with|split (between|across) (home|office))\b/i;
 
 function workplaceOf(j) {
   if (j.workplace) return j.workplace;
   const head = `${j.title} ${j.location}`;
   const all = `${head} ${j.snippet || ''}`;
-  if (/\bhybrid\b/i.test(all)) return 'hybrid';
-  if (TITLE_REMOTE.test(head) || TEXT_REMOTE.test(all)) return 'remote';
+  if (TITLE_REMOTE.test(head) || STRONG_REMOTE.test(all)) return HYBRID.test(all) && !TITLE_REMOTE.test(head) && !/\bfully remote|100% remote|remote[- ]first\b/i.test(all) ? 'hybrid' : 'remote';
+  if (HYBRID.test(all) || WEAK_REMOTE.test(all)) return 'hybrid';
   return 'unknown';
 }
 
@@ -430,6 +443,7 @@ function enrich(j) {
   j.agency = AGENCY_RE.test(j.company || '');
   j.size = sizeOf(j.company);
   j.category = j.category || '';
+  j.desc = (j.snippet || '').slice(0, 4000);
   delete j.snippet;
   delete j.companyIndustry;
   delete j.jobTypeRaw;
@@ -492,7 +506,7 @@ async function search(p) {
 
   jobs = jobs.filter((j) => {
     if (!j.title || !j.url) return false;
-    if (j.source !== 'Adzuna' && !matchesQuery(j, alts)) return false;
+    if (j.source === 'Jooble' ? !looseMatch(j, alts) : j.source !== 'Adzuna' && !matchesQuery(j, alts)) return false;
     if (excl.some((r) => r.test(j.title))) return false;
     if (cutoff && j.posted && new Date(j.posted).getTime() < cutoff) return false;
     if (p.salaryMin && j.salaryMin != null && j.salaryMin < p.salaryMin) return false;
@@ -554,4 +568,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { search, enrich, finalize, collectCategory, adzunaCategories, INDUSTRY_LABELS };
+module.exports = { search, enrich, finalize, dedupe, companyBoards, collectCategory, adzunaCategories, INDUSTRY_LABELS };

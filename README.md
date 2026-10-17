@@ -33,7 +33,9 @@ Dropdowns with checkboxes (tick several, with a search box inside): role titles,
 
 - **Job category** uses Adzuna's list of job functions, similar to Seek's classifications. Jooble and company career pages have no category, so one is guessed from the job title (rules in `CATEGORY_RULES` in `server.js`).
 - **Industry** is a best guess from the company name and job category. Fix or add companies in `companyInfo.json`.
-- **Remote, job type and level** are worked out from the title and description, so treat them as best guesses.
+- **Remote, hybrid, job type and level** are worked out from the title and the description text each board supplies. Adzuna and Jooble only share a short preview (about 500 characters), so a remote mention further down an advert is missed. Company career pages give the full text. Treat these as best guesses.
+- **Clicking a job** opens a detail page with the preview text and an **Apply** button that opens the original advert on its board.
+- **Company career pages** are collected in full (every open role), not only keyword matches.
 - **Company size** comes from `companyInfo.json` (approximate bands for well-known employers). Job APIs do not provide it.
 - **Distance** uses each job's map coordinates from Adzuna, or the centre of its city. Roles with no location are kept unless you untick "Include roles with no specific location".
 

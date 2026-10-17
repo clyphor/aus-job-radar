@@ -88,6 +88,19 @@
     .topbar button{padding:8px 14px}
   }
   @media (prefers-reduced-motion:no-preference){ul.jobs li{transition:background .15s}ul.jobs li:hover{background:#F7FAFB}}
+  .detail{position:fixed;inset:0;z-index:60;background:rgba(15,37,48,.55);display:none;align-items:flex-start;justify-content:center;overflow-y:auto}
+  .detail.open{display:flex}
+  .detail .sheet{background:var(--panel);width:100%;max-width:760px;min-height:100%;padding:18px 20px 110px}
+  @media (min-width:861px){.detail .sheet{margin:32px 0;min-height:0;border-radius:12px;padding-bottom:28px}}
+  .detail .back{border:0;background:none;color:var(--harbour);font:inherit;font-weight:700;padding:6px 0;cursor:pointer}
+  .detail h2{margin:10px 0 4px;font-size:clamp(22px,4vw,30px);line-height:1.2;color:var(--harbour-dark)}
+  .detail .desc{white-space:pre-line;margin:16px 0;font-size:16px;line-height:1.6}
+  .detail .facts{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:14px 0;font-size:15px}
+  .detail .facts dt{color:var(--muted)} .detail .facts dd{margin:0}
+  .detail .apply{position:sticky;bottom:0;background:var(--panel);padding:12px 0;border-top:1px solid var(--line);margin-top:18px}
+  .detail .apply a{display:block;text-align:center;background:var(--harbour);color:#fff;text-decoration:none;font-weight:800;padding:14px 18px;border-radius:10px}
+  .detail .apply a:hover{background:var(--harbour-dark)}
+  .morebtn{display:block;margin:18px auto;padding:12px 22px}
 </style>
 </head>
 <body>
@@ -192,6 +205,7 @@
 
 <script src="places.js"></script>
 <script src="filter.js"></script>
+<div class="detail" id="detail" role="dialog" aria-modal="true" aria-label="Job details"><div class="sheet" id="sheet"></div></div>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -210,11 +224,12 @@ const FIXED = {
     ['telecom','Telecommunications'],['media','Media, marketing and advertising'],['ngo','Not-for-profit'],['none','Not identified'],
   ],
   jobTypes: [['full-time','Full-time'],['part-time','Part-time'],['contract','Contract'],['casual','Casual'],['unknown','Not stated']],
-  workplaces: [['remote','Remote'],['hybrid','Hybrid'],['unknown','Not stated']],
+  workplaces: [['remote','Remote'],['hybrid','Hybrid or flexible'],['unknown','Not stated']],
   levels: [['entry','Entry / junior'],['mid','Mid'],['senior','Senior'],['manager','Manager / lead'],['leadership','Head / director']],
   sizes: [['1-200','1 to 200'],['201-1000','201 to 1,000'],['1001-5000','1,001 to 5,000'],['5000+','5,000+'],['unknown','Size not known']],
   sources: [['Adzuna','Adzuna'],['Jooble','Jooble'],['Company site','Company career pages']],
 };
+const INDUSTRY_NAMES = Object.fromEntries(FIXED.industries);
 let POOL = [];
 let MYLOC = null;
 const seenBefore = new Set(store('seen') || []);
@@ -361,6 +376,7 @@ const CLEARERS = [
   ['Only roles with a salary', (f) => ({ ...f, salaryOnly: false })], ['Hide recruiters', (f) => ({ ...f, hideAgencies: false })],
 ];
 
+const PAGE = 100; let shownCount = PAGE, lastKey = '';
 function render(){
   otherBoards();
   const f = current();
@@ -388,14 +404,16 @@ function render(){
     return;
   }
   const org = f.radius ? f.origin : null;
-  const shown = results.slice(0, 300);
+  const key = JSON.stringify([f, get('sort')]);
+  if(key !== lastKey){ lastKey = key; shownCount = PAGE; }
+  const shown = results.slice(0, shownCount);
   $('#out').innerHTML = '<ul class="jobs">' + shown.map((j) => `
     <li>
-      <a class="title" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+      <a class="title" href="#job=${encodeURIComponent(j.id)}" data-id="${esc(j.id)}">${esc(j.title)}</a>
       <div class="meta">${esc(j.company || 'Company not listed')}${j.location ? ' in ' + esc(j.location) : ''}</div>
       <div class="tags">${tagsFor(j, org)}</div>
     </li>`).join('') + '</ul>' +
-    (results.length > shown.length ? `<p class="note">Showing the first ${shown.length} of ${results.length}. Narrow the filters to see the rest.</p>` : '');
+    (results.length > shown.length ? `<button type="button" class="morebtn" id="showMore">Show ${Math.min(PAGE, results.length - shown.length)} more (${shown.length} of ${results.length} shown)</button>` : '');
 }
 
 // ---------- data ----------
@@ -443,10 +461,10 @@ async function load(){
     $('#status').innerHTML =
       `<span class="chip">Job list last changed ${ago(data.updated)}</span>` +
       (data.sources || []).map((s) =>
-        `<span class="chip ${s.ok?'ok':'bad'}">${esc(s.name)}: ${s.ok ? s.count + ' found' : esc(s.note || 'failed')}${s.ok && s.note ? ' (' + esc(s.note) + ')' : ''}</span>`
+        `<span class="chip ${s.ok?'ok':'bad'}">${esc(s.name)}: ${s.ok ? 'working' : esc(s.note || 'failed')}${s.ok && s.note ? ' (' + esc(s.note) + ')' : ''}</span>`
       ).join('') +
       (data.stats || []).map((s) =>
-        `<span class="chip" title="Rows received from ${esc(s.source)} this run, and how many remain after removing duplicates">${esc(s.source)}: ${s.kept} kept of ${s.fetched} fetched</span>`
+        `<span class="chip ok" title="Jobs listed on this page from ${esc(s.source)}. ${s.fetched} rows were received this run; the rest were duplicates.">${esc(s.source)}: ${s.kept} jobs</span>`
       ).join('') +
       (data.capped ? `<span class="chip" title="Companies posting many near-identical ads are limited to their newest few">${data.capped} repeat ads skipped</span>` : '');
   }catch(e){
@@ -503,8 +521,58 @@ const toResults = () => $('#out').scrollIntoView({ behavior: matchMedia('(prefer
 $('#f').addEventListener('submit', (e) => { e.preventDefault(); msCloseAll(); render(); toResults(); });
 $('#jump').addEventListener('click', toResults);
 
+$('#out').addEventListener('click', (e) => {
+  if(e.target.id === 'showMore'){ shownCount += PAGE; render(); return; }
+  const a = e.target.closest('a.title');
+  if(!a) return;
+  e.preventDefault();
+  openJob(a.dataset.id, true);
+});
+const SRC_NAME = { 'Company site': 'the company careers page', Adzuna: 'Adzuna', Jooble: 'Jooble' };
+let lastScroll = 0;
+function openJob(id, push){
+  const j = POOL.find((x) => x.id === id);
+  if(!j) return closeJob(false);
+  seenBefore.add(id);
+  const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+  const wpLabel = { remote: 'Remote', hybrid: 'Hybrid or flexible' }[j.workplace] || '';
+  const desc = j.desc ? esc(j.desc.replace(/([.!?])\s+(?=[A-Z•-])/g, '$1\n')) : '';
+  $('#sheet').innerHTML = `
+    <button type="button" class="back" id="back">&larr; Back to results</button>
+    <h2>${esc(j.title)}</h2>
+    <div class="meta">${esc(j.company || 'Company not listed')}${j.location ? ' in ' + esc(j.location) : ''}</div>
+    <div class="tags" style="margin-top:10px">${tagsFor(j, null)}</div>
+    <dl class="facts">
+      ${row('Salary', j.salary)}${row('Work style', wpLabel)}${row('Job type', j.jobType !== 'unknown' ? j.jobType : '')}
+      ${row('Category', j.category)}${row('Industry', (j.industries || []).map((k) => INDUSTRY_NAMES[k] || k).join(', '))}
+      ${row('Listed on', j.source)}
+    </dl>
+    <div class="desc">${desc || 'This job board did not share a description. Open the original advert to read it.'}</div>
+    ${j.desc && j.source !== 'Company site' ? '<p class="note">This is the preview supplied by the job board. The full advert is on the apply page.</p>' : ''}
+    <div class="apply"><a href="${esc(j.url)}" target="_blank" rel="noopener">Apply on ${esc(SRC_NAME[j.source] || j.source)} &rarr;</a></div>`;
+  $('#back').addEventListener('click', () => closeJob(true));
+  lastScroll = window.scrollY;
+  $('#detail').classList.add('open');
+  $('#detail').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  if(push && location.hash !== '#job=' + encodeURIComponent(id)) history.pushState({ job: id }, '', '#job=' + encodeURIComponent(id));
+}
+function closeJob(viaBack){
+  $('#detail').classList.remove('open');
+  document.body.style.overflow = '';
+  if(viaBack && /^#job=/.test(location.hash)) history.back();
+  else if(/^#job=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+}
+window.addEventListener('popstate', () => {
+  const m = location.hash.match(/^#job=(.+)$/);
+  if(m) openJob(decodeURIComponent(m[1]), false);
+  else { $('#detail').classList.remove('open'); document.body.style.overflow = ''; }
+});
+$('#detail').addEventListener('click', (e) => { if(e.target.id === 'detail') closeJob(true); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && $('#detail').classList.contains('open')) closeJob(true); });
+
 Object.keys(MS_LABELS).forEach(msInit);
-drawSaved(); otherBoards(); load();
+drawSaved(); otherBoards(); load().then(() => { const m = location.hash.match(/^#job=(.+)$/); if(m) openJob(decodeURIComponent(m[1]), false); });
 </script>
 </body>
 </html>
