@@ -23,6 +23,8 @@ Each run collects two things:
 1. **Role keywords** from `searches.json` (customer success, support and so on) from Adzuna, Jooble and your company career pages.
 2. **Adzuna job categories** (Accounting, IT, Sales, Legal, Healthcare and the rest of Adzuna's list). A few categories are refreshed per run on a rotation, newest roles first, so the Adzuna free call limit is not used up. The first time, run **Refresh jobs** from the Actions tab and tick **Fetch every Adzuna category now** to fill the whole list at once.
 
+With every filter cleared the page lists every job collected from all sources; filters only narrow that list. The chips at the top show, per source, how many jobs were fetched and how many remain after removing duplicates. To stop one advertiser (for example a delivery company) flooding the list, `maxPerCompany` in `searches.json` keeps only that company's newest ads per job board (set it to 0 for no limit).
+
 The page shows what was collected, not every job on every board. Seek, Indeed and LinkedIn cannot be collected at all.
 
 ### Filters on the page

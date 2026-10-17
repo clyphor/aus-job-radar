@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const { ADZUNA_APP_ID, ADZUNA_APP_KEY, JOOBLE_KEY } = process.env;
@@ -95,7 +96,7 @@ async function adzuna(p, q) {
       title: strip(j.title),
       company: j.company?.display_name || '',
       location: j.location?.display_name || '',
-      salary: (j.salary_is_predicted === '1' ? 'est. ' : '') + fmtSalary(j.salary_min, j.salary_max),
+      salary: fmtSalary(j.salary_min, j.salary_max) ? (j.salary_is_predicted === '1' ? 'est. ' : '') + fmtSalary(j.salary_min, j.salary_max) : '',
       salaryMin: j.salary_min || null,
       salaryEstimated: j.salary_is_predicted === '1',
       url: j.redirect_url,
@@ -356,10 +357,21 @@ function sizeOf(company) {
   return info && info.size ? info.size : 'unknown';
 }
 
+// Stable id for a job. Uses the advert number inside the link where the board has one, otherwise a hash of the
+// whole link. (Never use the end of the link: many Adzuna links end the same way, which merges unrelated jobs.)
+function jobKey(j) {
+  const url = j.url || '';
+  const adz = url.match(/adzuna\.[^/]+\/(?:land\/ad|details)\/(\d+)/);
+  if (adz) return 'adz-' + adz[1];
+  const joo = url.match(/jooble\.org\/desc\/(-?\d+)/);
+  if (joo) return 'joo-' + joo[1];
+  return 'u-' + crypto.createHash('sha1').update(url).digest('hex').slice(0, 16);
+}
+
 // give every job an id and its derived fields
 function finalize(jobs) {
   jobs.forEach((j) => {
-    j.id = Buffer.from(j.url).toString('base64').slice(-24);
+    j.id = jobKey(j);
     enrich(j);
   });
   return jobs;

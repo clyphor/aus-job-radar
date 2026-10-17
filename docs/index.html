@@ -367,7 +367,7 @@ function render(){
   const results = sortJobs(filterJobs(POOL, f), get('sort'));
   const fresh = results.filter((j) => !seenBefore.has(j.id)).length;
   $('#count').textContent = `${results.length} roles match`;
-  $('#summary').textContent = `${results.length} of ${POOL.length} saved roles${fresh && seenBefore.size ? `, ${fresh} new since your last visit` : ''}`;
+  $('#summary').textContent = `Showing ${results.length} of ${POOL.length} jobs${fresh && seenBefore.size ? ` (${fresh} you have not seen before)` : ''}`;
   const nMore = ['workplaces','levels','sizes','sources'].filter((k) => f[k].length).length +
     [f.company, f.excludeCompany, f.exclude, f.salaryMin, f.salaryOnly, f.hideAgencies, !f.includeNoLocation].filter(Boolean).length;
   $('#moreSummary').textContent = nMore ? `More filters (${nMore} on)` : 'More filters';
@@ -444,7 +444,11 @@ async function load(){
       `<span class="chip">Job list last changed ${ago(data.updated)}</span>` +
       (data.sources || []).map((s) =>
         `<span class="chip ${s.ok?'ok':'bad'}">${esc(s.name)}: ${s.ok ? s.count + ' found' : esc(s.note || 'failed')}${s.ok && s.note ? ' (' + esc(s.note) + ')' : ''}</span>`
-      ).join('');
+      ).join('') +
+      (data.stats || []).map((s) =>
+        `<span class="chip" title="Rows received from ${esc(s.source)} this run, and how many remain after removing duplicates">${esc(s.source)}: ${s.kept} kept of ${s.fetched} fetched</span>`
+      ).join('') +
+      (data.capped ? `<span class="chip" title="Companies posting many near-identical ads are limited to their newest few">${data.capped} repeat ads skipped</span>` : '');
   }catch(e){
     POOL = [];
     $('#status').innerHTML = `<span class="chip bad">${esc(e.message)}</span>`;

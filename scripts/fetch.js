@@ -18,7 +18,9 @@ const SOURCE_OF = { Adzuna: 'Adzuna', 'Adzuna categories': 'Adzuna', Jooble: 'Jo
 (async () => {
   const byId = new Map();
   const sources = new Map();
+  const fetched = {}; // rows received from each source before merging duplicates
   const add = (j) => {
+    fetched[j.source] = (fetched[j.source] || 0) + 1;
     const old = byId.get(j.id);
     if (!old || (!old.salary && j.salary)) byId.set(j.id, j);
   };
@@ -102,7 +104,24 @@ const SOURCE_OF = { Adzuna: 'Adzuna', 'Adzuna categories': 'Adzuna', Jooble: 'Jo
     if (kept) console.log(`Kept ${kept} older roles that this run did not refresh.`);
   }
 
-  const jobs = [...byId.values()].sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
+  let jobs = [...byId.values()].sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
+
+  // Some advertisers post hundreds of near-identical ads (for example delivery drivers). Keep the newest few
+  // per company from the job boards so they do not crowd out everything else. Career pages are never capped.
+  const cap = cfg.maxPerCompany || 0;
+  let capped = 0;
+  if (cap) {
+    const per = new Map();
+    jobs = jobs.filter((j) => {
+      if (j.source === 'Company site' || !j.company) return true;
+      const k = `${j.source}|${j.company.toLowerCase()}`;
+      const n = (per.get(k) || 0) + 1;
+      per.set(k, n);
+      if (n > cap) { capped++; return false; }
+      return true;
+    });
+    if (capped) console.log(`Skipped ${capped} extra ads from companies with more than ${cap} ads.`);
+  }
 
   // Never replace a good list with an empty one (for example during an API outage).
   if (!jobs.length && previous && previous.jobs && previous.jobs.length) {
@@ -116,6 +135,12 @@ const SOURCE_OF = { Adzuna: 'Adzuna', 'Adzuna categories': 'Adzuna', Jooble: 'Jo
     count: jobs.length,
     sources: [...sources.values()],
     categories,
+    stats: Object.keys(fetched).map((source) => ({
+      source,
+      fetched: fetched[source],
+      kept: jobs.filter((j) => j.source === source).length,
+    })),
+    capped,
     jobs,
   };
   fs.mkdirSync(path.dirname(OUT), { recursive: true });

@@ -6,6 +6,7 @@
   "categoryPages": 2,
   "categoriesPerRun": 8,
   "carryDays": 14,
+  "maxPerCompany": 10,
   "roles": [
     "customer experience",
     "customer success",
