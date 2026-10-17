@@ -47,7 +47,7 @@ Saving either file triggers a refresh. The starter slugs are guesses. The status
 
 ### Limits
 
-- The list is up to 3 hours old, not live. It runs every 4 hours to stay within Adzuna's free call limits (about 30 calls per run). Change the `cron` line in `.github/workflows/refresh-jobs.yml` to run more often.
+- The list is up to 4 hours old, not live. Each run makes roughly 30 Adzuna calls. I could not confirm Adzuna's free call limit, so the schedule is cautious. If the status chips show Adzuna failing with a rate-limit error, run less often. Change the `cron` line in `.github/workflows/refresh-jobs.yml` to run more or less often.
 - A free Pages site from a public repo is public, so anyone with the link can see the job list. Your keys stay hidden.
 - GitHub may pause scheduled runs after about 60 days with no repo activity. Run the workflow by hand to restart it.
 
