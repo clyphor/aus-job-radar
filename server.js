@@ -7,6 +7,8 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const { ADZUNA_APP_ID, ADZUNA_APP_KEY, JOOBLE_KEY } = process.env;
 const companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'companies.json'), 'utf8'));
+let companyInfo = {};
+try { companyInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'companyInfo.json'), 'utf8')); } catch (e) {}
 
 // ---------- helpers ----------
 const cache = new Map();
@@ -52,53 +54,103 @@ const fmtSalary = (min, max) => {
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // ---------- sources ----------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function adzuna(p, q) {
   if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return null;
-  const u = new URL('https://api.adzuna.com/v1/api/jobs/au/search/1');
-  u.searchParams.set('app_id', ADZUNA_APP_ID);
-  u.searchParams.set('app_key', ADZUNA_APP_KEY);
-  u.searchParams.set('results_per_page', '50');
-  u.searchParams.set('sort_by', 'date');
-  if (q) u.searchParams.set('what', q);
-  if (p.where) u.searchParams.set('where', p.where);
-  if (p.days) u.searchParams.set('max_days_old', String(p.days));
-  if (p.salaryMin) u.searchParams.set('salary_min', String(p.salaryMin));
-  const data = await cached(u.toString(), 2 * 60e3, () => getJSON(u));
-  return (data.results || []).map((j) => ({
-    title: strip(j.title),
-    company: j.company?.display_name || '',
-    location: j.location?.display_name || '',
-    salary: fmtSalary(j.salary_min, j.salary_max),
-    salaryMin: j.salary_min || null,
-    url: j.redirect_url,
-    posted: j.created || null,
-    source: 'Adzuna',
-    snippet: strip(j.description),
-  }));
+  const pages = Math.max(1, Math.min(p.adzunaPages || 1, 5));
+  const out = [];
+  let titleOnly = !!q; // match the role words in the job title only, so results stay on topic
+  for (let page = 1; page <= pages; page++) {
+    const fetchPage = (useTitle) => {
+      const u = new URL(`https://api.adzuna.com/v1/api/jobs/au/search/${page}`);
+      u.searchParams.set('app_id', ADZUNA_APP_ID);
+      u.searchParams.set('app_key', ADZUNA_APP_KEY);
+      u.searchParams.set('results_per_page', '50');
+      u.searchParams.set('sort_by', 'date');
+      if (q) u.searchParams.set(useTitle ? 'title_only' : 'what', q);
+      if (p.where) u.searchParams.set('where', p.where);
+      if (p.days) u.searchParams.set('max_days_old', String(p.days));
+      if (p.salaryMin) u.searchParams.set('salary_min', String(p.salaryMin));
+      return cached(u.toString(), 5 * 60e3, () => getJSON(u));
+    };
+    let data;
+    try {
+      try {
+        data = await fetchPage(titleOnly);
+      } catch (e) {
+        // if Adzuna rejects title_only, fall back to a normal keyword search
+        if (titleOnly && /HTTP 400/.test(String(e.message))) { titleOnly = false; data = await fetchPage(false); }
+        else throw e;
+      }
+    } catch (e) {
+      if (page === 1) throw e; // nothing fetched yet: report the failure
+      break; // keep what earlier pages returned
+    }
+    const rows = data.results || [];
+    out.push(...rows.map((j) => ({
+      title: strip(j.title),
+      company: j.company?.display_name || '',
+      location: j.location?.display_name || '',
+      salary: (j.salary_is_predicted === '1' ? 'est. ' : '') + fmtSalary(j.salary_min, j.salary_max),
+      salaryMin: j.salary_min || null,
+      salaryEstimated: j.salary_is_predicted === '1',
+      url: j.redirect_url,
+      posted: j.created || null,
+      source: 'Adzuna',
+      category: (j.category?.label || '').replace(/ Jobs$/i, ''),
+      jobTypeRaw: [j.contract_time, j.contract_type].filter(Boolean).join(' ').replace(/_/g, ' '),
+      snippet: strip(j.description),
+    })));
+    if (rows.length < 50) break;
+    await sleep(300);
+  }
+  return out;
 }
 
 async function jooble(p, q) {
   if (!JOOBLE_KEY) return null;
-  const body = JSON.stringify({ keywords: q, location: p.where || 'Australia', page: 1 });
-  const data = await cached('jooble|' + body, 2 * 60e3, () =>
-    getJSON('https://jooble.org/api/' + JOOBLE_KEY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    })
-  );
-  return (data.jobs || []).map((j) => ({
-    title: strip(j.title),
-    company: j.company || '',
-    location: j.location || '',
-    salary: j.salary || '',
-    salaryMin: null,
-    url: j.link,
-    posted: j.updated || null,
-    source: 'Jooble',
-    snippet: strip(j.snippet),
-  }));
+  const pages = Math.max(1, Math.min(p.jooblePages || 1, 5));
+  const out = [];
+  for (let page = 1; page <= pages; page++) {
+    const body = JSON.stringify({ keywords: q, location: p.where || 'Australia', page });
+    let data;
+    try {
+      data = await cached('jooble|' + body, 5 * 60e3, () =>
+        getJSON('https://jooble.org/api/' + JOOBLE_KEY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        })
+      );
+    } catch (e) {
+      if (page === 1) throw e;
+      break;
+    }
+    const rows = data.jobs || [];
+    out.push(...rows.map((j) => ({
+      title: strip(j.title),
+      company: j.company || '',
+      location: j.location || '',
+      salary: j.salary || '',
+      salaryMin: null,
+      url: j.link,
+      posted: j.updated || null,
+      source: 'Jooble',
+      category: '',
+      jobTypeRaw: j.type || '',
+      snippet: strip(j.snippet),
+    })));
+    if (rows.length < 10) break;
+    await sleep(300);
+  }
+  return out;
 }
+
+const wp = (v) => {
+  const t = String(v || '').toLowerCase();
+  return t.includes('remote') ? 'remote' : t.includes('hybrid') ? 'hybrid' : '';
+};
 
 const atsFetchers = {
   greenhouse: async (s) =>
@@ -115,6 +167,8 @@ const atsFetchers = {
       location: j.categories?.location || (j.categories?.allLocations || []).join(', '),
       url: j.hostedUrl,
       posted: j.createdAt ? new Date(j.createdAt).toISOString() : null,
+      workplace: wp(j.workplaceType),
+      jobTypeRaw: j.categories?.commitment || '',
       snippet: (j.descriptionPlain || '').slice(0, 400),
     })),
   ashby: async (s) =>
@@ -123,6 +177,8 @@ const atsFetchers = {
       location: j.location || '',
       url: j.jobUrl,
       posted: j.publishedAt || null,
+      workplace: j.isRemote === true ? 'remote' : wp(j.workplaceType),
+      jobTypeRaw: String(j.employmentType || '').replace(/([a-z])([A-Z])/g, '$1 $2'),
       snippet: strip(j.descriptionPlain || j.descriptionHtml).slice(0, 400),
     })),
 };
@@ -188,6 +244,70 @@ function dedupe(jobs) {
   return [...seen.values()];
 }
 
+// ---------- derived fields ----------
+const AGENCY_RE = /\b(hays|robert half|michael page|page personnel|randstad|hudson|adecco|manpower|kelly services|programmed|chandler macleod|talent international|peoplebank|davidson|frazer jones|people2people|career moves|six degrees|aston carter|lawson williams|beyond recruitment|recruit(ment|ing|er|ers)?|staffing|executive search|search & selection|labour hire)\b/i;
+const TITLE_REMOTE = /\b(remote|work from home|wfh|work from anywhere)\b/i;
+const TEXT_REMOTE = /\b(fully remote|100% remote|remote[- ]first|remote role|remote position|remote work|work remotely|work from home|wfh)\b/i;
+
+function workplaceOf(j) {
+  if (j.workplace) return j.workplace;
+  const head = `${j.title} ${j.location}`;
+  const all = `${head} ${j.snippet || ''}`;
+  if (/\bhybrid\b/i.test(all)) return 'hybrid';
+  if (TITLE_REMOTE.test(head) || TEXT_REMOTE.test(all)) return 'remote';
+  return 'unknown';
+}
+
+function jobTypeOf(j) {
+  const raw = `${j.jobTypeRaw || ''}`.toLowerCase();
+  const title = (j.title || '').toLowerCase();
+  const text = `${title} ${(j.snippet || '').toLowerCase()}`;
+  if (/part/.test(raw) || /\bpart[- ]time\b/.test(title)) return 'part-time';
+  if (/casual/.test(raw) || /\bcasual\b/.test(title)) return 'casual';
+  if (/contract|temp|fixed/.test(raw) || /\b(contract|contractor|fixed[- ]term|temporary|temp)\b/.test(title)) return 'contract';
+  if (/full/.test(raw) || /\bfull[- ]time\b/.test(title)) return 'full-time';
+  if (/\bpart[- ]time\b/.test(text)) return 'part-time';
+  if (/\bcasual\b/.test(text)) return 'casual';
+  if (/\b(fixed[- ]term|12[- ]month contract|6[- ]month contract|contract role)\b/.test(text)) return 'contract';
+  if (/\bfull[- ]time\b/.test(text)) return 'full-time';
+  return 'unknown';
+}
+
+function levelOf(title) {
+  const t = (title || '').toLowerCase();
+  if (/\b(head of|director|vp|vice president|chief|principal|general manager)\b/.test(t)) return 'leadership';
+  if (/\b(manager|team leader|team lead|lead|supervisor)\b/.test(t)) return 'manager';
+  if (/\b(senior|sr|staff)\b/.test(t)) return 'senior';
+  if (/\b(intern|graduate|junior|jr|entry|trainee|apprentice|cadet)\b/.test(t)) return 'entry';
+  return 'mid';
+}
+
+const normCo = (s) =>
+  (s || '').toLowerCase().replace(/\b(pty|ltd|limited|inc|group|holdings|australia|australasia|aus|nz)\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+const sizeIndex = Object.entries(companyInfo).filter(([k]) => !k.startsWith('_')).map(([k, v]) => [normCo(k), v]).filter(([k]) => k);
+
+function sizeOf(company) {
+  const c = normCo(company);
+  if (!c) return 'unknown';
+  const hit = sizeIndex.find(([k]) => c === k || c.startsWith(k + ' '));
+  return hit && hit[1].size ? hit[1].size : 'unknown';
+}
+
+function enrich(j) {
+  const blob = `${j.company} ${j.companyIndustry || ''} ${j.snippet || ''}`;
+  j.industries = Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob));
+  j.workplace = workplaceOf(j);
+  j.jobType = jobTypeOf(j);
+  j.level = levelOf(j.title);
+  j.agency = AGENCY_RE.test(j.company || '');
+  j.size = sizeOf(j.company);
+  j.category = j.category || '';
+  delete j.snippet;
+  delete j.companyIndustry;
+  delete j.jobTypeRaw;
+  return j;
+}
+
 // ---------- search ----------
 async function search(p) {
   const t0 = Date.now();
@@ -244,7 +364,7 @@ async function search(p) {
 
   jobs = jobs.filter((j) => {
     if (!j.title || !j.url) return false;
-    if (!matchesQuery(j, alts)) return false;
+    if (j.source !== 'Adzuna' && !matchesQuery(j, alts)) return false;
     if (excl.some((r) => r.test(j.title))) return false;
     if (cutoff && j.posted && new Date(j.posted).getTime() < cutoff) return false;
     if (p.salaryMin && j.salaryMin != null && j.salaryMin < p.salaryMin) return false;
@@ -255,10 +375,7 @@ async function search(p) {
   jobs = dedupe(jobs).sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
   jobs.forEach((j) => {
     j.id = Buffer.from(j.url).toString('base64').slice(-24);
-    const blob = `${j.company} ${j.companyIndustry || ''} ${j.snippet || ''}`;
-    j.industries = Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob));
-    delete j.snippet;
-    delete j.companyIndustry;
+    enrich(j);
   });
 
   return { total: jobs.length, results: jobs.slice(0, p.limit || 200), sources: status, tookMs: Date.now() - t0 };
@@ -312,4 +429,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { search };
+module.exports = { search, enrich };

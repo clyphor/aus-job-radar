@@ -7,6 +7,9 @@ const { search } = require('../server.js');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'searches.json'), 'utf8'));
 const OUT = path.join(__dirname, '..', 'docs', 'jobs.json');
 
+// source name in the status list -> value of job.source
+const SOURCE_OF = { Adzuna: 'Adzuna', Jooble: 'Jooble', 'Company sites': 'Company site' };
+
 (async () => {
   const byId = new Map();
   const sources = new Map();
@@ -20,7 +23,9 @@ const OUT = path.join(__dirname, '..', 'docs', 'jobs.json');
       days: cfg.days || 30,
       salaryMin: 0,
       sources: ['adzuna', 'jooble', 'company'],
-      limit: 1000,
+      adzunaPages: cfg.adzunaPages || 1,
+      jooblePages: cfg.jooblePages || 1,
+      limit: 5000,
     });
     for (const j of r.results) {
       const old = byId.get(j.id);
@@ -36,10 +41,25 @@ const OUT = path.join(__dirname, '..', 'docs', 'jobs.json');
     console.log(`${q}: ${r.results.length} roles`);
   }
 
-  const jobs = [...byId.values()].sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
-
   let previous = null;
   try { previous = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) {}
+
+  // If a source failed this run (outage, rate limit, bad key), keep its jobs from the last good run
+  // so the list does not shrink.
+  if (previous && previous.jobs) {
+    const failedLabels = new Set([...sources.values()].filter((s) => !s.ok).map((s) => SOURCE_OF[s.name]));
+    const cutoff = Date.now() - (cfg.days || 30) * 864e5;
+    let kept = 0;
+    for (const j of previous.jobs) {
+      if (!failedLabels.has(j.source) || byId.has(j.id)) continue;
+      if (j.posted && new Date(j.posted).getTime() < cutoff) continue;
+      byId.set(j.id, j);
+      kept++;
+    }
+    if (kept) console.log(`Kept ${kept} roles from sources that failed this run.`);
+  }
+
+  const jobs = [...byId.values()].sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0));
 
   // Never replace a good list with an empty one (for example during an API outage).
   if (!jobs.length && previous && previous.jobs && previous.jobs.length) {

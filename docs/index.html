@@ -19,29 +19,33 @@
   header .wrap{max-width:1100px;margin:0 auto}
   h1{margin:0;font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.02em}
   header p{margin:6px 0 0;color:#B9D3DF;max-width:56ch}
-  .layout{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:24px;grid-template-columns:300px 1fr}
+  .layout{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:24px;grid-template-columns:320px 1fr}
   @media (max-width:860px){.layout{grid-template-columns:1fr}}
   form{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;align-self:start;display:grid;gap:14px}
   label{display:grid;gap:5px;font-size:14px;font-weight:700}
   label small{font-weight:400;color:var(--muted)}
   input[type=text],input[type=number],select{font:inherit;padding:10px 11px;border:1px solid #B7C6CD;border-radius:6px;background:#fff;color:var(--ink);width:100%}
-  input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid #7FC1DA;outline-offset:1px}
-  fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}
-  legend{font-size:14px;font-weight:700;padding:0;margin-bottom:4px}
-  .check{display:flex;gap:8px;align-items:center;font-weight:500}
-  .check input{width:18px;height:18px}
+  input:focus,select:focus,summary:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #7FC1DA;outline-offset:1px}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .check{display:flex;gap:8px;align-items:center;font-weight:500}
+  .check input{width:18px;height:18px;flex:none}
+  details{border:1px solid var(--line);border-radius:8px;background:#F8FBFC}
+  summary{cursor:pointer;font-weight:700;font-size:14px;padding:11px 12px}
+  details .inner{display:grid;gap:14px;padding:4px 12px 14px}
   button.primary{font:inherit;font-weight:700;background:var(--harbour);color:#fff;border:0;border-radius:6px;padding:12px;cursor:pointer}
   button.primary:hover{background:var(--harbour-dark)}
-  button.primary:disabled{opacity:.6;cursor:wait}
   button.link{font:inherit;background:none;border:0;color:var(--harbour);cursor:pointer;padding:0;text-decoration:underline}
+  .links{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
   .others{font-size:14px;color:var(--muted)}
   .others a{color:var(--harbour);font-weight:700;margin-right:12px}
   .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
   .chip{font-size:13px;padding:3px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
   .chip.ok{border-color:#9CCDB3;color:var(--ferry)}
   .chip.bad{border-color:#E2B7A3;color:var(--warn)}
-  .summary{font-weight:700;margin:0 0 8px}
+  .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+  .summary{font-weight:700;margin:0}
+  .sort{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+  .sort select{width:auto;padding:6px 8px}
   ul.jobs{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:10px}
   ul.jobs li{padding:16px 18px;border-top:1px solid var(--line);display:grid;gap:3px}
   ul.jobs li:first-child{border-top:0}
@@ -52,14 +56,17 @@
   .tag{padding:1px 8px;border-radius:4px;background:#E4EDF1}
   .tag.new{background:var(--ferry);color:#fff;font-weight:700}
   .tag.salary{background:#FFF1C2}
+  .tag.remote{background:#D9F0E3}
+  .tag.agency{background:#F4DDD2}
+  .empty{background:var(--panel);border:1px dashed #B7C6CD;border-radius:10px;padding:28px;color:var(--muted)}
+  .note{color:var(--muted);font-size:13px;margin:10px 2px}
+  .saved{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .saved button{font:inherit;font-size:13px;border:1px solid var(--line);background:#F6F9FA;border-radius:99px;padding:3px 10px;cursor:pointer}
   .topbar{display:none}
   @media (max-width:860px){
     .topbar{display:flex;position:sticky;top:0;z-index:5;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;font-weight:700}
     .topbar button{padding:8px 14px}
   }
-  .empty{background:var(--panel);border:1px dashed #B7C6CD;border-radius:10px;padding:28px;color:var(--muted)}
-  .saved{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
-  .saved button{font:inherit;font-size:13px;border:1px solid var(--line);background:#F6F9FA;border-radius:99px;padding:3px 10px;cursor:pointer}
   @media (prefers-reduced-motion:no-preference){ul.jobs li{transition:background .15s}ul.jobs li:hover{background:#F7FAFB}}
 </style>
 </head>
@@ -67,7 +74,7 @@
 <header>
   <div class="wrap">
     <h1>Aus Job Radar</h1>
-    <p>One list pulled from job aggregators and company career pages, refreshed every hour. Filters apply instantly.</p>
+    <p>One list pulled from job aggregators and company career pages, refreshed every few hours. Filters apply instantly.</p>
   </div>
 </header>
 
@@ -76,14 +83,14 @@
 <div class="layout">
   <form id="f">
     <label>Role
-      <input type="text" name="q" id="q" value="customer experience or customer success or customer support or customer service" autocomplete="off">
-      <small>Use "or" to search several titles at once</small>
+      <input type="text" name="q" id="q" placeholder="e.g. customer success or support" autocomplete="off">
+      <small>Use "or" to search several titles. Leave empty to see everything.</small>
     </label>
     <label>Location
-      <input type="text" name="where" id="where" value="Sydney">
+      <input type="text" name="where" id="where" value="Sydney" placeholder="Sydney, Melbourne, or empty for all">
     </label>
     <label>Industry
-      <select name="industry" id="industry">
+      <select id="industry">
         <option value="" selected>Any</option>
         <option value="saas">SaaS / tech</option>
         <option value="insurance">Insurance</option>
@@ -91,13 +98,16 @@
         <option value="health">Health</option>
       </select>
     </label>
-    <label>Leave out titles containing
-      <input type="text" name="exclude" id="exclude" value="senior, manager, head, director, lead">
-      <small>Comma separated</small>
-    </label>
     <div class="row">
+      <label>Work style
+        <select id="workplace">
+          <option value="" selected>Any</option>
+          <option value="remote">Remote only</option>
+          <option value="remote-hybrid">Remote or hybrid</option>
+        </select>
+      </label>
       <label>Posted within
-        <select name="days" id="days">
+        <select id="days">
           <option value="1">24 hours</option>
           <option value="3">3 days</option>
           <option value="7">7 days</option>
@@ -106,19 +116,95 @@
           <option value="0">Any time</option>
         </select>
       </label>
-      <label>Min salary
-        <input type="number" name="salaryMin" id="salaryMin" placeholder="70000" step="5000" min="0">
-      </label>
     </div>
-        <button class="primary" id="go" type="submit">Show roles</button>
-    <button class="link" id="save" type="button">Save this search</button>
+
+    <details id="more">
+      <summary id="moreSummary">More filters</summary>
+      <div class="inner">
+        <div class="row">
+          <label>Job type
+            <select id="jobType">
+              <option value="" selected>Any</option>
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+              <option value="contract">Contract</option>
+              <option value="casual">Casual</option>
+            </select>
+          </label>
+          <label>Level
+            <select id="level">
+              <option value="" selected>Any</option>
+              <option value="entry">Entry / junior</option>
+              <option value="mid">Mid</option>
+              <option value="senior">Senior</option>
+              <option value="manager">Manager / lead</option>
+              <option value="leadership">Head / director</option>
+            </select>
+          </label>
+        </div>
+        <label>Job category
+          <select id="category"><option value="" selected>Any</option></select>
+        </label>
+        <label>Company size
+          <select id="size">
+            <option value="" selected>Any</option>
+            <option value="1-200">1 to 200</option>
+            <option value="201-1000">201 to 1,000</option>
+            <option value="1001-5000">1,001 to 5,000</option>
+            <option value="5000+">5,000+</option>
+            <option value="unknown">Size not known</option>
+          </select>
+          <small>Only known for companies listed in companyInfo.json</small>
+        </label>
+        <label>Company name contains
+          <input type="text" id="company" list="companies" autocomplete="off" placeholder="e.g. Atlassian">
+          <datalist id="companies"></datalist>
+        </label>
+        <label>Leave out companies
+          <input type="text" id="excludeCompany" placeholder="comma separated" autocomplete="off">
+        </label>
+        <label>Leave out titles containing
+          <input type="text" id="exclude" placeholder="e.g. senior, manager, lead" autocomplete="off">
+        </label>
+        <div class="row">
+          <label>Min salary
+            <input type="number" id="salaryMin" placeholder="70000" step="5000" min="0">
+          </label>
+          <label>Source
+            <select id="source">
+              <option value="" selected>All</option>
+              <option>Adzuna</option>
+              <option>Jooble</option>
+              <option>Company site</option>
+            </select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="salaryOnly"> Only roles that list a salary</label>
+        <label class="check"><input type="checkbox" id="hideAgencies"> Hide recruiters and agencies</label>
+      </div>
+    </details>
+
+    <button class="primary" id="go" type="submit">Show roles</button>
+    <div class="links">
+      <button class="link" id="save" type="button">Save this search</button>
+      <button class="link" id="reset" type="button">Clear filters</button>
+    </div>
     <div class="saved" id="saved"></div>
     <div class="others" id="others"></div>
   </form>
 
   <main>
     <div class="bar" id="status"></div>
-    <p class="summary" id="summary"></p>
+    <div class="head">
+      <p class="summary" id="summary"></p>
+      <label class="sort">Sort by
+        <select id="sort">
+          <option value="new" selected>Newest</option>
+          <option value="salary">Salary, high to low</option>
+          <option value="company">Company A to Z</option>
+        </select>
+      </label>
+    </div>
     <div id="out"><div class="empty">Loading jobs...</div></div>
   </main>
 </div>
@@ -127,11 +213,22 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const FIELDS = ['q','where','industry','exclude','days','salaryMin'];
+const TEXT_IDS = ['q','where','industry','workplace','days','jobType','level','category','size','company','excludeCompany','exclude','salaryMin','source','sort'];
+const CHECK_IDS = ['salaryOnly','hideAgencies'];
+const ALL_IDS = [...TEXT_IDS, ...CHECK_IDS];
+const DEFAULTS = { where: 'Sydney', days: '30', sort: 'new' };
+const MORE_KEYS = ['jobType','level','category','size','company','excludeCompany','exclude','salaryMin','source','salaryOnly','hideAgencies'];
+const LABELS = {
+  q:'Role', where:'Location', industry:'Industry', workplace:'Work style', days:'Posted within', jobType:'Job type', level:'Level',
+  category:'Job category', size:'Company size', company:'Company name', excludeCompany:'Leave out companies', exclude:'Leave out titles',
+  salaryMin:'Min salary', source:'Source', salaryOnly:'Only roles that list a salary', hideAgencies:'Hide recruiters'
+};
 let POOL = [];
 const seenBefore = new Set(store('seen') || []);
 
 function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)||'null'); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
+const get = (id) => { const e = $('#'+id); return e.type === 'checkbox' ? e.checked : e.value; };
+const set = (id, v) => { const e = $('#'+id); if(!e) return; if(e.type === 'checkbox') e.checked = !!v; else e.value = v ?? ''; };
 
 function ago(d){
   if(!d) return 'date not listed';
@@ -141,16 +238,23 @@ function ago(d){
   return Math.floor(h/24) + 'd ago';
 }
 
+function snapshot(){ const o = {}; ALL_IDS.forEach((k) => o[k] = get(k)); return o; }
+function restore(o){ ALL_IDS.forEach((k) => set(k, o[k] !== undefined ? o[k] : (DEFAULTS[k] ?? (CHECK_IDS.includes(k) ? false : '')))); }
+
 function current(){
   return {
-    q: $('#q').value, where: $('#where').value, industry: $('#industry').value,
-    exclude: $('#exclude').value.split(',').map((x) => x.trim()).filter(Boolean),
-    days: parseInt($('#days').value) || 0, salaryMin: parseInt($('#salaryMin').value) || 0,
+    q: get('q'), where: get('where'), industry: get('industry'), workplace: get('workplace'),
+    days: parseInt(get('days')) || 0, jobType: get('jobType'), level: get('level'), category: get('category'),
+    size: get('size'), company: get('company'), excludeCompany: get('excludeCompany'), exclude: get('exclude'),
+    salaryMin: parseInt(get('salaryMin')) || 0, source: get('source'),
+    salaryOnly: get('salaryOnly'), hideAgencies: get('hideAgencies'),
   };
 }
 
+function isActive(f, k){ return !!f[k]; }
+
 function otherBoards(){
-  const q = encodeURIComponent($('#q').value.split(/\s+or\s+|,|\|/i)[0].trim());
+  const q = encodeURIComponent(($('#q').value || 'customer').split(/\s+or\s+|,|\|/i)[0].trim());
   const w = encodeURIComponent($('#where').value || 'Australia');
   $('#others').innerHTML = 'Also search on: ' +
     `<a href="https://www.seek.com.au/jobs?keywords=${q}&where=${w}" target="_blank" rel="noopener">Seek</a>` +
@@ -158,43 +262,64 @@ function otherBoards(){
     `<a href="https://www.linkedin.com/jobs/search/?keywords=${q}&location=${w}" target="_blank" rel="noopener">LinkedIn</a>`;
 }
 
+function tagsFor(j){
+  const t = [];
+  if(seenBefore.size && !seenBefore.has(j.id)) t.push('<span class="tag new">New</span>');
+  if(j.salary) t.push(`<span class="tag salary">${esc(j.salary)}</span>`);
+  if(j.workplace === 'remote') t.push('<span class="tag remote">Remote</span>');
+  if(j.workplace === 'hybrid') t.push('<span class="tag remote">Hybrid</span>');
+  if(j.jobType && j.jobType !== 'unknown') t.push(`<span class="tag">${esc(j.jobType)}</span>`);
+  if(j.level && j.level !== 'mid') t.push(`<span class="tag">${esc(j.level)}</span>`);
+  if(j.size && j.size !== 'unknown') t.push(`<span class="tag">${esc(j.size)} staff</span>`);
+  if(j.category) t.push(`<span class="tag">${esc(j.category)}</span>`);
+  if(j.agency) t.push('<span class="tag agency">Recruiter</span>');
+  t.push(`<span class="tag">${esc(j.source)}</span>`);
+  t.push(`<span class="meta">${ago(j.posted)}</span>`);
+  return t.join('');
+}
+
 function render(){
   otherBoards();
-  const results = filterJobs(POOL, current());
+  const f = current();
+  const results = sortJobs(filterJobs(POOL, f), get('sort'));
   const fresh = results.filter((j) => !seenBefore.has(j.id)).length;
   $('#count').textContent = `${results.length} roles match`;
-  $('#summary').textContent = `${results.length} roles${fresh && seenBefore.size ? `, ${fresh} new since your last visit` : ''}`;
+  $('#summary').textContent = `${results.length} of ${POOL.length} saved roles${fresh && seenBefore.size ? `, ${fresh} new since your last visit` : ''}`;
+  const nMore = MORE_KEYS.filter((k) => isActive(f, k)).length;
+  $('#moreSummary').textContent = nMore ? `More filters (${nMore} on)` : 'More filters';
+  store('last', snapshot());
 
   if(!POOL.length){
     $('#out').innerHTML = '<div class="empty">No jobs saved yet. Run the Refresh jobs workflow on GitHub (Actions tab) to fill the list.</div>';
     return;
   }
   if(!results.length){
-    const f = current();
-    const tries = [
-      ['Posted within', { ...f, days: 0 }],
-      ['Industry', { ...f, industry: '' }],
-      ['Location', { ...f, where: '' }],
-      ['Leave out titles', { ...f, exclude: [] }],
-      ['Min salary', { ...f, salaryMin: 0 }],
-    ].map(([name, g]) => [name, filterJobs(POOL, g).length]).filter((t) => t[1] > 0).sort((a, b) => b[1] - a[1]);
+    const tries = Object.keys(LABELS).filter((k) => isActive(f, k)).map((k) => {
+      const g = { ...f, [k]: (typeof f[k] === 'boolean' ? false : (typeof f[k] === 'number' ? 0 : '')) };
+      return [LABELS[k], filterJobs(POOL, g).length];
+    }).filter((t) => t[1] > 0).sort((a, b) => b[1] - a[1]);
     const hint = tries.length
-      ? 'Loosening <b>' + esc(tries[0][0]) + '</b> would show ' + tries[0][1] + ' roles.'
-      : 'Try fewer or broader role titles. The saved list only has ' + POOL.length + ' roles in total.';
+      ? 'Switching off <b>' + esc(tries[0][0]) + '</b> would show ' + tries[0][1] + ' roles.'
+      : 'Nothing in the saved list fits. It has ' + POOL.length + ' roles in total.';
     $('#out').innerHTML = '<div class="empty">No roles match these filters. ' + hint + '</div>';
     return;
   }
-  $('#out').innerHTML = '<ul class="jobs">' + results.slice(0, 300).map((j) => `
+  const shown = results.slice(0, 300);
+  $('#out').innerHTML = '<ul class="jobs">' + shown.map((j) => `
     <li>
       <a class="title" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
       <div class="meta">${esc(j.company || 'Company not listed')}${j.location ? ' in ' + esc(j.location) : ''}</div>
-      <div class="tags">
-        ${seenBefore.size && !seenBefore.has(j.id) ? '<span class="tag new">New</span>' : ''}
-        ${j.salary ? `<span class="tag salary">${esc(j.salary)}</span>` : ''}
-        <span class="tag">${esc(j.source)}</span>
-        <span class="meta">${ago(j.posted)}</span>
-      </div>
-    </li>`).join('') + '</ul>';
+      <div class="tags">${tagsFor(j)}</div>
+    </li>`).join('') + '</ul>' +
+    (results.length > shown.length ? `<p class="note">Showing the first ${shown.length} of ${results.length}. Narrow the filters to see the rest.</p>` : '');
+}
+
+function fillOptions(){
+  const cats = {}; const cos = new Set();
+  POOL.forEach((j) => { if(j.category) cats[j.category] = (cats[j.category] || 0) + 1; if(j.company) cos.add(j.company); });
+  $('#category').innerHTML = '<option value="">Any</option>' +
+    Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, n]) => `<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
+  $('#companies').innerHTML = [...cos].sort().slice(0, 800).map((c) => `<option value="${esc(c)}">`).join('');
 }
 
 async function load(){
@@ -212,16 +337,18 @@ async function load(){
     POOL = [];
     $('#status').innerHTML = `<span class="chip bad">${esc(e.message)}</span>`;
   }
+  fillOptions();
+  const last = store('last'); if(last) restore(last);
   render();
   // remember what was shown so "New" means new since the last visit
-  store('seen', [...new Set([...POOL.map((j) => j.id), ...seenBefore])].slice(0, 5000));
+  store('seen', [...new Set([...POOL.map((j) => j.id), ...seenBefore])].slice(0, 8000));
 }
 
 // saved searches
 function drawSaved(){
   const list = store('searches') || [];
   $('#saved').innerHTML = list.map((s, i) =>
-    `<button type="button" data-i="${i}" title="Load this search. Shift-click to delete.">${esc(s.q.slice(0,28))} · ${esc(s.where)}</button>`
+    `<button type="button" data-i="${i}" title="Load this search. Shift-click to delete.">${esc((s.q || 'All roles').slice(0,26))} · ${esc(s.where || 'Australia')}</button>`
   ).join('');
 }
 $('#saved').addEventListener('click', (e) => {
@@ -229,17 +356,18 @@ $('#saved').addEventListener('click', (e) => {
   const list = store('searches') || [];
   const i = +b.dataset.i;
   if(e.shiftKey){ list.splice(i,1); store('searches', list); drawSaved(); return; }
-  const s = list[i]; FIELDS.forEach((k) => $('#'+k).value = s[k] ?? '');
-  render();
+  restore(list[i]); render();
 });
 $('#save').addEventListener('click', () => {
   const list = store('searches') || [];
-  const s = {}; FIELDS.forEach((k) => s[k] = $('#'+k).value);
-  list.unshift(s); store('searches', list.slice(0, 8)); drawSaved();
+  list.unshift(snapshot()); store('searches', list.slice(0, 8)); drawSaved();
 });
+$('#reset').addEventListener('click', () => { restore({}); render(); });
 
 let t;
 $('#f').addEventListener('input', () => { clearTimeout(t); t = setTimeout(render, 150); });
+$('#f').addEventListener('change', render);
+$('#sort').addEventListener('change', render);
 const toResults = () => $('#out').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 $('#f').addEventListener('submit', (e) => { e.preventDefault(); render(); toResults(); });
 $('#jump').addEventListener('click', toResults);

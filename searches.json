@@ -1,13 +1,20 @@
 {
   "days": 30,
+  "adzunaPages": 2,
+  "jooblePages": 2,
   "roles": [
     "customer experience",
     "customer success",
     "customer support",
     "customer service",
     "customer care",
-    "client experience",
     "customer operations",
+    "customer onboarding",
+    "customer advocate",
+    "client experience",
+    "client success",
+    "client service",
+    "technical support",
     "support specialist",
     "claims"
   ]
