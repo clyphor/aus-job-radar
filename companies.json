@@ -1,0 +1,9 @@
+[
+  { "name": "Airwallex", "ats": "greenhouse", "slug": "airwallex", "industry": "fintech saas" },
+  { "name": "Rokt", "ats": "greenhouse", "slug": "rokt", "industry": "saas tech" },
+  { "name": "Cover Genius", "ats": "greenhouse", "slug": "covergenius", "industry": "insurance fintech" },
+  { "name": "Deputy", "ats": "greenhouse", "slug": "deputy", "industry": "saas" },
+  { "name": "Culture Amp", "ats": "greenhouse", "slug": "cultureamp", "industry": "saas" },
+  { "name": "Linktree", "ats": "greenhouse", "slug": "linktree", "industry": "saas" },
+  { "name": "SafetyCulture", "ats": "lever", "slug": "safetyculture", "industry": "saas" }
+]

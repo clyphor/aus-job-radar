@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: aus-job-radar
+    runtime: node
+    plan: free
+    startCommand: node server.js
+    envVars:
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      - key: JOOBLE_KEY
+        sync: false

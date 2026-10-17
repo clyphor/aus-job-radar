@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aus Job Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF3F5; --panel:#FFFFFF; --ink:#0F2530; --muted:#5A6F7A; --line:#D3DEE3;
+    --harbour:#0B5C7A; --harbour-dark:#083F55; --ferry:#1C7A4B; --warn:#A5471B;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:Figtree,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.45}
+  header{background:var(--harbour-dark);color:#fff;padding:28px 20px 26px}
+  header .wrap{max-width:1100px;margin:0 auto}
+  h1{margin:0;font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.02em}
+  header p{margin:6px 0 0;color:#B9D3DF;max-width:56ch}
+  .layout{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:24px;grid-template-columns:300px 1fr}
+  @media (max-width:860px){.layout{grid-template-columns:1fr}}
+  form{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;align-self:start;display:grid;gap:14px}
+  label{display:grid;gap:5px;font-size:14px;font-weight:700}
+  label small{font-weight:400;color:var(--muted)}
+  input[type=text],input[type=number],select{font:inherit;padding:10px 11px;border:1px solid #B7C6CD;border-radius:6px;background:#fff;color:var(--ink);width:100%}
+  input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid #7FC1DA;outline-offset:1px}
+  fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}
+  legend{font-size:14px;font-weight:700;padding:0;margin-bottom:4px}
+  .check{display:flex;gap:8px;align-items:center;font-weight:500}
+  .check input{width:18px;height:18px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button.primary{font:inherit;font-weight:700;background:var(--harbour);color:#fff;border:0;border-radius:6px;padding:12px;cursor:pointer}
+  button.primary:hover{background:var(--harbour-dark)}
+  button.primary:disabled{opacity:.6;cursor:wait}
+  button.link{font:inherit;background:none;border:0;color:var(--harbour);cursor:pointer;padding:0;text-decoration:underline}
+  .others{font-size:14px;color:var(--muted)}
+  .others a{color:var(--harbour);font-weight:700;margin-right:12px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+  .chip{font-size:13px;padding:3px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
+  .chip.ok{border-color:#9CCDB3;color:var(--ferry)}
+  .chip.bad{border-color:#E2B7A3;color:var(--warn)}
+  .summary{font-weight:700;margin:0 0 8px}
+  ul.jobs{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  ul.jobs li{padding:16px 18px;border-top:1px solid var(--line);display:grid;gap:3px}
+  ul.jobs li:first-child{border-top:0}
+  .title{font-size:18px;font-weight:700;color:var(--harbour);text-decoration:none}
+  .title:hover{text-decoration:underline}
+  .meta{color:var(--muted);font-size:14px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-top:4px}
+  .tag{padding:1px 8px;border-radius:4px;background:#E4EDF1}
+  .tag.new{background:var(--ferry);color:#fff;font-weight:700}
+  .tag.salary{background:#FFF1C2}
+  .empty{background:var(--panel);border:1px dashed #B7C6CD;border-radius:10px;padding:28px;color:var(--muted)}
+  .saved{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .saved button{font:inherit;font-size:13px;border:1px solid var(--line);background:#F6F9FA;border-radius:99px;padding:3px 10px;cursor:pointer}
+  @media (prefers-reduced-motion:no-preference){ul.jobs li{transition:background .15s}ul.jobs li:hover{background:#F7FAFB}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Aus Job Radar</h1>
+    <p>One search across job aggregators and company career pages. Results are pulled live each time you search.</p>
+  </div>
+</header>
+
+<div class="layout">
+  <form id="f">
+    <label>Role
+      <input type="text" name="q" id="q" value="customer experience specialist or customer success" autocomplete="off">
+      <small>Use "or" to search several titles at once</small>
+    </label>
+    <label>Location
+      <input type="text" name="where" id="where" value="Sydney">
+    </label>
+    <label>Industry
+      <select name="industry" id="industry">
+        <option value="">Any</option>
+        <option value="saas" selected>SaaS / tech</option>
+        <option value="insurance">Insurance</option>
+        <option value="finance">Banking / finance</option>
+        <option value="health">Health</option>
+      </select>
+    </label>
+    <label>Leave out titles containing
+      <input type="text" name="exclude" id="exclude" value="senior, manager, head, director, lead">
+      <small>Comma separated</small>
+    </label>
+    <div class="row">
+      <label>Posted within
+        <select name="days" id="days">
+          <option value="1">24 hours</option>
+          <option value="3">3 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="14">14 days</option>
+          <option value="30">30 days</option>
+          <option value="0">Any time</option>
+        </select>
+      </label>
+      <label>Min salary
+        <input type="number" name="salaryMin" id="salaryMin" placeholder="70000" step="5000" min="0">
+      </label>
+    </div>
+    <fieldset>
+      <legend>Sources</legend>
+      <label class="check"><input type="checkbox" name="src" value="adzuna" checked> Adzuna (many boards)</label>
+      <label class="check"><input type="checkbox" name="src" value="jooble" checked> Jooble (many boards)</label>
+      <label class="check"><input type="checkbox" name="src" value="company" checked> Company career pages</label>
+    </fieldset>
+    <button class="primary" id="go" type="submit">Search roles</button>
+    <button class="link" id="save" type="button">Save this search</button>
+    <div class="saved" id="saved"></div>
+    <div class="others" id="others"></div>
+  </form>
+
+  <main>
+    <div class="bar" id="status"></div>
+    <p class="summary" id="summary"></p>
+    <div id="out"><div class="empty">Set your filters and choose Search roles.</div></div>
+  </main>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FIELDS = ['q','where','industry','exclude','days','salaryMin'];
+
+function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)||'null'); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
+
+function ago(d){
+  if(!d) return 'date not listed';
+  const h = (Date.now() - new Date(d).getTime()) / 36e5;
+  if(h < 1) return 'just now';
+  if(h < 24) return Math.floor(h) + 'h ago';
+  return Math.floor(h/24) + 'd ago';
+}
+
+function params(){
+  const p = new URLSearchParams();
+  FIELDS.forEach((k) => p.set(k, $('#'+k).value));
+  p.set('sources', [...document.querySelectorAll('input[name=src]:checked')].map((c) => c.value).join(','));
+  return p;
+}
+
+function otherBoards(){
+  const q = encodeURIComponent($('#q').value.split(/\s+or\s+|,|\|/i)[0].trim());
+  const w = encodeURIComponent($('#where').value || 'Australia');
+  $('#others').innerHTML = 'Also search on: ' +
+    `<a href="https://www.seek.com.au/jobs?keywords=${q}&where=${w}" target="_blank" rel="noopener">Seek</a>` +
+    `<a href="https://au.indeed.com/jobs?q=${q}&l=${w}" target="_blank" rel="noopener">Indeed</a>` +
+    `<a href="https://www.linkedin.com/jobs/search/?keywords=${q}&location=${w}" target="_blank" rel="noopener">LinkedIn</a>`;
+}
+
+async function run(){
+  const btn = $('#go');
+  btn.disabled = true; btn.textContent = 'Searching...';
+  $('#summary').textContent = '';
+  otherBoards();
+  try{
+    const res = await fetch('/api/search?' + params());
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    render(data);
+  }catch(e){
+    $('#out').innerHTML = `<div class="empty">Search failed: ${esc(e.message)}. Check that the server is running.</div>`;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Search roles';
+  }
+}
+
+function render(data){
+  $('#status').innerHTML = data.sources.map((s) =>
+    `<span class="chip ${s.ok?'ok':'bad'}">${esc(s.name)}: ${s.ok ? s.count + ' found' : esc(s.note)}${s.ok && s.note ? ' (' + esc(s.note) + ')' : ''}</span>`
+  ).join('');
+
+  const seen = new Set(store('seen') || []);
+  const fresh = data.results.filter((j) => !seen.has(j.id)).length;
+  $('#summary').textContent = `${data.total} roles${fresh && seen.size ? `, ${fresh} new since your last search` : ''} (${(data.tookMs/1000).toFixed(1)}s)`;
+
+  if(!data.results.length){
+    $('#out').innerHTML = '<div class="empty">No roles matched. Try a wider window, remove the industry filter, or add more titles with "or".</div>';
+    return;
+  }
+  $('#out').innerHTML = '<ul class="jobs">' + data.results.map((j) => `
+    <li>
+      <a class="title" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+      <div class="meta">${esc(j.company || 'Company not listed')}${j.location ? ' in ' + esc(j.location) : ''}</div>
+      <div class="tags">
+        ${seen.size && !seen.has(j.id) ? '<span class="tag new">New</span>' : ''}
+        ${j.salary ? `<span class="tag salary">${esc(j.salary)}</span>` : ''}
+        <span class="tag">${esc(j.source)}</span>
+        <span class="meta">${ago(j.posted)}</span>
+      </div>
+    </li>`).join('') + '</ul>';
+
+  store('seen', [...new Set([...data.results.map((j) => j.id), ...seen])].slice(0, 3000));
+}
+
+// saved searches
+function drawSaved(){
+  const list = store('searches') || [];
+  $('#saved').innerHTML = list.map((s, i) =>
+    `<button type="button" data-i="${i}" title="Load this search. Shift-click to delete.">${esc(s.q.slice(0,28))} · ${esc(s.where)}</button>`
+  ).join('');
+}
+$('#saved').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if(!b) return;
+  const list = store('searches') || [];
+  const i = +b.dataset.i;
+  if(e.shiftKey){ list.splice(i,1); store('searches', list); drawSaved(); return; }
+  const s = list[i]; FIELDS.forEach((k) => $('#'+k).value = s[k] ?? '');
+  run();
+});
+$('#save').addEventListener('click', () => {
+  const list = store('searches') || [];
+  const s = {}; FIELDS.forEach((k) => s[k] = $('#'+k).value);
+  list.unshift(s); store('searches', list.slice(0, 8)); drawSaved();
+});
+
+$('#f').addEventListener('submit', (e) => { e.preventDefault(); run(); });
+drawSaved(); otherBoards();
+</script>
+</body>
+</html>
