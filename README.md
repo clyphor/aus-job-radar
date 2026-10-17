@@ -31,7 +31,7 @@ The page shows what was collected, not every job on every board. Seek, Indeed an
 
 Dropdowns with checkboxes (tick several, with a search box inside): role titles, location (states and cities), industry, job category, job type, work style, level, company size and source. Also role search words, distance from a city or your current location (5 to 200 km), posted date, company name, companies to leave out, titles to leave out, minimum salary, only roles with a salary, and hide recruiters. Sorting is by newest, salary or company.
 
-- **Job category** is Adzuna's list of job functions, similar to Seek's classifications.
+- **Job category** uses Adzuna's list of job functions, similar to Seek's classifications. Jooble and company career pages have no category, so one is guessed from the job title (rules in `CATEGORY_RULES` in `server.js`).
 - **Industry** is a best guess from the company name and job category. Fix or add companies in `companyInfo.json`.
 - **Remote, job type and level** are worked out from the title and description, so treat them as best guesses.
 - **Company size** comes from `companyInfo.json` (approximate bands for well-known employers). Job APIs do not provide it.

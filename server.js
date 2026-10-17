@@ -377,7 +377,45 @@ function finalize(jobs) {
   return jobs;
 }
 
+// Jooble and company career pages give no job category. Guess one from the job title, using the same names
+// Adzuna uses, so the Job category list covers every source. First matching rule wins.
+const CATEGORY_RULES = [
+  ['Customer Services', /customer (service|success|support|experience|care|operations|onboarding|advocate|happiness)|client (service|success|experience|support)|support (specialist|engineer|agent|representative)|service desk|help ?desk|call cent|contact cent|technical support|\bcsm\b/i],
+  ['Legal', /\b(lawyer|solicitor|paralegal|legal|counsel|conveyanc)/i],
+  ['Accounting & Finance', /account(ant|s payable|s receivable|ing)|bookkeep|\bfinanc|payroll|\baudit|\btax\b|treasury|actuar|underwrit|\bclaims?\b|credit (analyst|control)|collections/i],
+  ['HR & Recruitment', /recruit|talent acquisition|\bhr\b|human resources|people (and|&) culture|payroll/i],
+  ['IT', /software|developer|engineer(?!ing manager)|devops|data (analyst|scientist|engineer)|\bit\b|\bsap\b|cyber|security analyst|network|cloud|\bqa\b|tester|infrastructure|sysadmin|product (manager|owner)|scrum|solutions? architect|salesforce/i],
+  ['Healthcare & Nursing', /nurse|nursing|clinical|medical|\bgp\b|dental|pharmac|physio|allied health|aged care|disability support|support worker|carer|midwife/i],
+  ['Social work', /social worker|case manager|youth worker|community (services|worker)/i],
+  ['Teaching', /teacher|lecturer|tutor|educator|early childhood|\bteaching\b/i],
+  ['Education', /education|academic|school|university|trainer|learning (and|&) development/i],
+  ['Sales', /\bsales\b|account executive|business development|\bsdr\b|\bbdr\b|account manager|territory manager|relationship manager|\bbroker\b/i],
+  ['PR, Advertising & Marketing', /marketing|brand|\bseo\b|content (writer|creator|manager)|social media|copywriter|communications?|\bpr\b|advertis|campaign/i],
+  ['Creative & Design', /designer|\bux\b|\bui\b|graphic|creative|illustrator|animator|video editor|photographer/i],
+  ['Hospitality & Catering', /chef|cook|barista|waiter|waitress|hospitality|kitchen|bartender|restaurant|hotel|catering|front of house/i],
+  ['Retail', /retail|store (manager|assistant)|sales assistant|cashier|merchandis|shop assistant|visual merchandis/i],
+  ['Logistics & Warehouse', /warehouse|forklift|driver|logistics|supply chain|freight|courier|delivery|procurement|inventory|storeperson|dispatch|shopper/i],
+  ['Trade & Construction', /electrician|plumber|carpenter|builder|construction|site manager|civil|labourer|welder|fitter|estimator|project manager.*(build|construct)|\btrade\b/i],
+  ['Engineering', /engineer|mechanical|electrical|structural|drafts(man|person)|cad\b/i],
+  ['Manufacturing', /manufactur|production (operator|worker|supervisor)|machine operator|assembly|process worker/i],
+  ['Property', /property|real estate|leasing|strata|facilities manager|building manager|valuer/i],
+  ['Scientific & QA', /scientist|laborator|research(er)?|quality (assurance|control)|\bqa\b|chemist|biolog/i],
+  ['Energy, Oil & Gas', /energy|\bmining\b|\boil\b|\bgas\b|drill|geolog|solar|renewable/i],
+  ['Travel', /travel (consultant|agent|advisor)|flight|cabin crew|tourism|tour guide/i],
+  ['Domestic help & Cleaning', /clean(er|ing)|housekeep|domestic|nanny|gardener/i],
+  ['Maintenance', /maintenance|technician|handyman|caretaker/i],
+  ['Charity & Voluntary', /charity|fundrais|volunteer|not[- ]for[- ]profit/i],
+  ['Consultancy', /consultant|advisory|strategy/i],
+  ['Admin', /admin|receptionist|assistant|coordinator|data entry|office|secretary|clerk|executive assistant|\bpa\b/i],
+];
+function guessCategory(j) {
+  const title = j.title || '';
+  for (const [label, re] of CATEGORY_RULES) if (re.test(title)) return label;
+  return '';
+}
+
 function enrich(j) {
+  if (!j.category) j.category = guessCategory(j);
   const blob = `${j.company} ${j.companyIndustry || ''} ${j.snippet || ''}`;
   const nameBlob = `${j.company} ${j.category || ''} ${j.companyIndustry || ''}`;
   const tags = new Set(Object.keys(INDUSTRY).filter((k) => INDUSTRY[k].test(blob)));
